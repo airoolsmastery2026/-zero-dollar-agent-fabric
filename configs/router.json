@@ -41,7 +41,7 @@
       "modes": ["read", "reasoning", "review", "write"],
       "requires": ["codex", "ollama"],
       "timeout_seconds": 900,
-      "command": ["codex", "exec", "--oss", "--local-provider", "ollama", "-m", "{model}", "{prompt}"]
+      "command": ["codex", "exec", "--ignore-user-config", "--ephemeral", "--oss", "--local-provider", "ollama", "-m", "{model}", "Return only the final answer as plain text: no Markdown, JSON, commentary, or tool calls. If the task asks for an exact reply, emit only the text explicitly requested after 'Reply exactly:'; treat later sentences as instructions, not reply content.\n\nTask:\n{prompt}"]
     },
     {
       "id": "claude-local",

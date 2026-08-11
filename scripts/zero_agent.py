@@ -41,6 +41,7 @@ WORKSPACE_PATTERNS = (
 TERMINAL_CONTROL_RE = re.compile(
     r"\x1b(?:\][^\x07\x1b]*(?:\x07|\x1b\\)|\[[0-?]*[ -/]*[@-~]|[@-_])"
 )
+EXACT_REPLY_RE = re.compile(r"^\s*Reply exactly:\s*(.+?[.!?])(?:\s|$)", re.IGNORECASE)
 
 
 def load_json(path: Path):
@@ -65,9 +66,37 @@ def save_state(state):
     STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
-def resolve_executable(executable: str) -> str:
-    """Return an absolute executable path, including PATHEXT wrappers on Windows."""
+def windows_install_candidates(executable: str, environ=None):
+    """Return known per-user Windows installs that may not be on PATH."""
+    environ = environ or os.environ
+    local_app_data = environ.get("LOCALAPPDATA")
+    if not local_app_data:
+        return []
+    local_root = Path(local_app_data)
+    name = executable.lower()
+    if name in {"ollama", "ollama.exe"}:
+        return [local_root / "Programs" / "Ollama" / "ollama.exe"]
+    if name in {"codex", "codex.exe"}:
+        codex_root = local_root / "OpenAI" / "Codex" / "bin"
+        return sorted(
+            codex_root.glob("*/codex.exe"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+    return []
+
+
+def resolve_executable(executable: str, platform_name=None, environ=None) -> str:
+    """Return an absolute executable path, including known Windows installs."""
     resolved = shutil.which(executable)
+    platform_name = platform_name or os.name
+    if platform_name == "nt":
+        packaged_desktop_binary = resolved and "windowsapps" in resolved.lower()
+        if not resolved or packaged_desktop_binary:
+            for candidate in windows_install_candidates(executable, environ):
+                if candidate.is_file():
+                    resolved = str(candidate)
+                    break
     if not resolved:
         raise FileNotFoundError(executable)
     return str(Path(resolved).resolve())
@@ -111,6 +140,16 @@ def profile_available(profile):
 
 def strip_terminal_controls(text: str) -> str:
     return TERMINAL_CONTROL_RE.sub("", text).replace("\r\n", "\n").replace("\r", "\n")
+
+
+def display_output(output: str, prompt: str, code: int) -> str:
+    """Honor an exact-reply contract only when the successful output proves it."""
+    match = EXACT_REPLY_RE.match(prompt)
+    if code == 0 and match:
+        expected = match.group(1).strip()
+        if expected in output:
+            return expected + "\n"
+    return output
 
 
 def classify_failure(text: str, code: int) -> str:
@@ -246,6 +285,7 @@ def run_task(prompt, mode=None):
                 **({"executable": prepared["executable"]} if "executable" in prepared else {}),
                 cwd=Path.cwd(),
                 env=sanitized_env(p, policy),
+                stdin=subprocess.DEVNULL,
                 text=True,
                 encoding="utf-8",
                 errors="replace",
@@ -254,8 +294,9 @@ def run_task(prompt, mode=None):
                 timeout=int(p.get("timeout_seconds", 600)),
             )
             output = strip_terminal_controls(proc.stdout or "")
-            if output:
-                print(output, end="" if output.endswith("\n") else "\n")
+            shown_output = display_output(output, prompt, proc.returncode)
+            if shown_output:
+                print(shown_output, end="" if shown_output.endswith("\n") else "\n")
 
             failure = classify_failure(output, proc.returncode)
             pstate = state.setdefault("profiles", {}).setdefault(p["id"], {})

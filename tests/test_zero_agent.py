@@ -29,6 +29,19 @@ class ZeroAgentTests(unittest.TestCase):
         self.assertEqual(clean, "HTTP 429 quota exceeded")
         self.assertEqual(zero_agent.classify_failure(clean, 1), "quota")
 
+    def test_successful_exact_reply_is_displayed_without_provider_noise(self):
+        prompt = "Reply exactly: ZERO LOCAL WRITE PASS. Do not modify any files."
+        output = "provider warning\nZERO LOCAL WRITE PASS. Do not modify any files.\n"
+        self.assertEqual(
+            zero_agent.display_output(output, prompt, 0),
+            "ZERO LOCAL WRITE PASS.\n",
+        )
+
+    def test_exact_reply_is_not_fabricated_when_provider_omits_it(self):
+        prompt = "Reply exactly: ZERO LOCAL WRITE PASS. Do not modify any files."
+        output = "different response\n"
+        self.assertEqual(zero_agent.display_output(output, prompt, 0), output)
+
     def test_windows_cmd_wrapper_resolution(self):
         with patch.object(
             zero_agent,
@@ -41,6 +54,41 @@ class ZeroAgentTests(unittest.TestCase):
         self.assertEqual(command["executable"], r"C:\Windows\System32\cmd.exe")
         self.assertIn('/d /q /v:off /s /c', command["args"])
         self.assertIn('"hello ^& goodbye"', command["args"])
+
+    def test_windows_resolves_standard_ollama_install_outside_path(self):
+        local_app_data = Path(r"C:\Users\dev\AppData\Local")
+        expected = local_app_data / "Programs" / "Ollama" / "ollama.exe"
+        with patch.object(zero_agent.shutil, "which", return_value=None), \
+             patch.object(zero_agent.Path, "is_file", return_value=True), \
+             patch.object(zero_agent.Path, "resolve", return_value=expected):
+            resolved = zero_agent.resolve_executable(
+                "ollama",
+                platform_name="nt",
+                environ={"LOCALAPPDATA": str(local_app_data)},
+            )
+        self.assertEqual(resolved, str(expected))
+
+    def test_windows_replaces_unlaunchable_desktop_codex_binary(self):
+        expected = Path(r"C:\Users\dev\AppData\Local\OpenAI\Codex\bin\version\codex.exe")
+        with patch.object(
+            zero_agent.shutil,
+            "which",
+            return_value=r"C:\Program Files\WindowsApps\OpenAI.Codex\codex.exe",
+        ), patch.object(
+            zero_agent,
+            "windows_install_candidates",
+            return_value=[expected],
+        ), patch.object(
+            zero_agent.Path,
+            "is_file",
+            return_value=True,
+        ), patch.object(
+            zero_agent.Path,
+            "resolve",
+            return_value=expected,
+        ):
+            resolved = zero_agent.resolve_executable("codex", platform_name="nt")
+        self.assertEqual(resolved, str(expected))
 
     def test_render_command(self):
         profile = {"command": ["agent", "--model", "{model}", "{prompt}"]}
@@ -61,6 +109,10 @@ class ZeroAgentTests(unittest.TestCase):
         self.assertNotIn("write", profiles["antigravity-headless"]["modes"])
         self.assertNotIn("write", profiles["minimax-m3-free"]["modes"])
         self.assertIn("write", profiles["codex-local"]["modes"])
+        self.assertIn("--ignore-user-config", profiles["codex-local"]["command"])
+        self.assertIn("--ephemeral", profiles["codex-local"]["command"])
+        self.assertIn("Return only the final answer as plain text", profiles["codex-local"]["command"][-1])
+        self.assertIn("{prompt}", profiles["codex-local"]["command"][-1])
 
     def test_profile_allowed_respects_mode_and_cost(self):
         zero_read = {"enabled": True, "modes": ["read"], "cost_class": "zero"}
@@ -100,6 +152,7 @@ class ZeroAgentTests(unittest.TestCase):
             kwargs = run.call_args.kwargs
             self.assertEqual(kwargs["encoding"], "utf-8")
             self.assertEqual(kwargs["errors"], "replace")
+            self.assertIs(kwargs["stdin"], zero_agent.subprocess.DEVNULL)
             self.assertFalse(kwargs.get("shell", False))
 
     def test_spawn_failure_is_persisted(self):
