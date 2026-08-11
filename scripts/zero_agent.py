@@ -16,25 +16,27 @@ STATE_DIR = Path.cwd() / ".zero"
 STATE_PATH = STATE_DIR / "state.json"
 
 QUOTA_PATTERNS = (
-    "429",
-    "quota",
-    "rate limit",
-    "rate_limit",
-    "resource exhausted",
-    "resource_exhausted",
-    "usage limit",
-    "limit reached",
-    "too many requests",
+    "429", "quota", "rate limit", "rate_limit", "resource exhausted",
+    "resource_exhausted", "usage limit", "limit reached", "too many requests",
+)
+AUTH_PATTERNS = (
+    "unauthorized", "authentication", "not logged in", "login required",
+    "invalid api key", "invalid_api_key",
+)
+SUBSCRIPTION_PATTERNS = (
+    "requires a subscription", "upgrade for access", "subscription required",
+)
+ELIGIBILITY_PATTERNS = (
+    "account is not eligible", "not eligible for antigravity", "eligibility check failed",
+)
+COMPATIBILITY_PATTERNS = (
+    "invalid tool type", "invalid params", "tool schema", "namespace",
+)
+WORKSPACE_PATTERNS = (
+    "antigravity-cli\\scratch", "antigravity-cli/scratch", "outside workspace",
 )
 
-AUTH_PATTERNS = (
-    "unauthorized",
-    "authentication",
-    "not logged in",
-    "login required",
-    "invalid api key",
-    "invalid_api_key",
-)
+ALLOWED_ZERO_COST_CLASSES = {"zero", "zero-incremental"}
 
 
 def load_json(path: Path):
@@ -65,13 +67,31 @@ def profile_available(profile):
 
 def classify_failure(text: str, code: int) -> str:
     low = text.lower()
+    if any(p in low for p in SUBSCRIPTION_PATTERNS):
+        return "subscription"
+    if any(p in low for p in ELIGIBILITY_PATTERNS):
+        return "eligibility"
     if any(p in low for p in QUOTA_PATTERNS):
         return "quota"
+    if any(p in low for p in COMPATIBILITY_PATTERNS):
+        return "compatibility"
     if any(p in low for p in AUTH_PATTERNS):
         return "auth"
+    if any(p in low for p in WORKSPACE_PATTERNS):
+        return "workspace"
     if code == 0:
         return "success"
     return "runtime"
+
+
+def cooldown_seconds(config, failure):
+    if failure == "quota":
+        return int(config["quota_cooldown_seconds"])
+    if failure == "compatibility":
+        return int(config["compatibility_cooldown_seconds"])
+    if failure in {"eligibility", "subscription"}:
+        return int(config["eligibility_cooldown_seconds"])
+    return int(config["runtime_cooldown_seconds"])
 
 
 def cooldown_active(state, profile_id):
@@ -91,14 +111,25 @@ def sanitized_env(profile, policy):
 
 
 def render_command(profile, prompt, model):
-    out = []
-    for token in profile["command"]:
-        out.append(token.replace("{prompt}", prompt).replace("{model}", model))
-    return out
+    return [
+        token.replace("{prompt}", prompt).replace("{model}", model)
+        for token in profile["command"]
+    ]
+
+
+def profile_allowed(profile, mode, absolute_zero=True):
+    if not profile.get("enabled", True):
+        return False
+    if mode not in profile.get("modes", []):
+        return False
+    if absolute_zero and profile.get("cost_class") not in ALLOWED_ZERO_COST_CLASSES:
+        return False
+    return True
 
 
 def doctor(config):
     print("ZERO-$ Agent Fabric doctor")
+    print(f"version={config.get('version')}")
     print(f"absolute_zero={config.get('absolute_zero', True)}")
     model = os.getenv(config["default_local_model_env"], config["default_local_model"])
     print(f"local_model={model}")
@@ -109,26 +140,28 @@ def doctor(config):
             state = "missing dependency"
         else:
             state = "available"
-        print(f"- {p['id']}: {state}; cost={p['cost_class']}; kind={p['kind']}")
+        modes = ",".join(p.get("modes", [])) or "-"
+        print(
+            f"- {p['id']}: {state}; cost={p['cost_class']}; "
+            f"kind={p['kind']}; modes={modes}"
+        )
 
 
 def status():
-    state = load_state()
-    print(json.dumps(state, indent=2))
+    print(json.dumps(load_state(), indent=2))
 
 
-def run_task(prompt):
+def run_task(prompt, mode=None):
     config = load_json(CONFIG_PATH)
     policy = load_json(POLICY_PATH)
     state = load_state()
+    mode = mode or config.get("default_mode", "read")
     model = os.getenv(config["default_local_model_env"], config["default_local_model"])
 
     candidates = sorted(config["profiles"], key=lambda x: x["priority"])
 
     for p in candidates:
-        if not p.get("enabled", True):
-            continue
-        if config.get("absolute_zero", True) and p.get("cost_class") != "zero":
+        if not profile_allowed(p, mode, config.get("absolute_zero", True)):
             continue
         if not profile_available(p):
             continue
@@ -137,16 +170,8 @@ def run_task(prompt):
         if active:
             continue
 
-        if "{model}" in " ".join(p.get("command", [])) and model == "CHANGE_ME":
-            print(
-                f"[skip] {p['id']}: set {config['default_local_model_env']} "
-                "to an installed Ollama model.",
-                file=sys.stderr,
-            )
-            continue
-
         cmd = render_command(p, prompt, model)
-        print(f"[zero-$] trying {p['id']}...", file=sys.stderr)
+        print(f"[zero-$] trying {p['id']} mode={mode}...", file=sys.stderr)
 
         try:
             proc = subprocess.run(
@@ -156,6 +181,7 @@ def run_task(prompt):
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
+                timeout=int(p.get("timeout_seconds", 600)),
             )
             output = proc.stdout or ""
             if output:
@@ -163,28 +189,24 @@ def run_task(prompt):
 
             failure = classify_failure(output, proc.returncode)
             pstate = state.setdefault("profiles", {}).setdefault(p["id"], {})
-            pstate.update(
-                {
-                    "last_used": now(),
-                    "last_exit_code": proc.returncode,
-                    "last_failure_class": failure,
-                }
-            )
+            pstate.update({
+                "last_used": now(),
+                "last_exit_code": proc.returncode,
+                "last_failure_class": failure,
+            })
+            state.update({
+                "last_task": prompt,
+                "last_mode": mode,
+                "last_profile": p["id"],
+                "last_updated": now(),
+            })
 
-            state["last_task"] = prompt
-            state["last_profile"] = p["id"]
-            state["last_updated"] = now()
-
-            if proc.returncode == 0:
+            if proc.returncode == 0 and failure == "success":
                 pstate["cooldown_until"] = 0
                 save_state(state)
                 return 0
 
-            cooldown = (
-                config["quota_cooldown_seconds"]
-                if failure == "quota"
-                else config["runtime_cooldown_seconds"]
-            )
+            cooldown = cooldown_seconds(config, failure)
             pstate["cooldown_until"] = now() + cooldown
             save_state(state)
             print(
@@ -193,6 +215,16 @@ def run_task(prompt):
                 file=sys.stderr,
             )
 
+        except subprocess.TimeoutExpired:
+            pstate = state.setdefault("profiles", {}).setdefault(p["id"], {})
+            pstate.update({
+                "last_used": now(),
+                "last_exit_code": 124,
+                "last_failure_class": "timeout",
+                "cooldown_until": now() + int(config["runtime_cooldown_seconds"]),
+            })
+            save_state(state)
+            print(f"[zero-$] {p['id']} timed out; switching...", file=sys.stderr)
         except FileNotFoundError:
             continue
         except KeyboardInterrupt:
@@ -201,7 +233,7 @@ def run_task(prompt):
 
     save_state(state)
     print(
-        "[zero-$] No zero-cost profile is currently usable. "
+        "[zero-$] No zero-cost profile is currently usable for this mode. "
         "No paid provider was invoked.",
         file=sys.stderr,
     )
@@ -210,7 +242,10 @@ def run_task(prompt):
 
 def main():
     if len(sys.argv) < 2:
-        print("usage: zero_agent.py doctor|status|run <task>", file=sys.stderr)
+        print(
+            "usage: zero_agent.py doctor|status|run [--mode read|reasoning|review|write] <task>",
+            file=sys.stderr,
+        )
         return 2
 
     command = sys.argv[1]
@@ -223,10 +258,15 @@ def main():
         status()
         return 0
     if command == "run":
-        if len(sys.argv) < 3:
-            print("usage: zero_agent.py run <task>", file=sys.stderr)
+        args = sys.argv[2:]
+        mode = None
+        if len(args) >= 2 and args[0] == "--mode":
+            mode = args[1]
+            args = args[2:]
+        if not args:
+            print("usage: zero_agent.py run [--mode MODE] <task>", file=sys.stderr)
             return 2
-        return run_task(" ".join(sys.argv[2:]))
+        return run_task(" ".join(args), mode=mode)
 
     print(f"unknown command: {command}", file=sys.stderr)
     return 2
