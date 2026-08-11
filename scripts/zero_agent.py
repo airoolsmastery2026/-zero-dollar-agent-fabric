@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -36,6 +37,11 @@ WORKSPACE_PATTERNS = (
     "antigravity-cli\\scratch", "antigravity-cli/scratch", "outside workspace",
 )
 
+# CSI, OSC, and the remaining single-character ANSI/VT escape sequences.
+TERMINAL_CONTROL_RE = re.compile(
+    r"\x1b(?:\][^\x07\x1b]*(?:\x07|\x1b\\)|\[[0-?]*[ -/]*[@-~]|[@-_])"
+)
+
 
 def load_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
@@ -59,8 +65,38 @@ def save_state(state):
     STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
+def resolve_executable(executable: str) -> str:
+    """Return an absolute executable path, including PATHEXT wrappers on Windows."""
+    resolved = shutil.which(executable)
+    if not resolved:
+        raise FileNotFoundError(executable)
+    return str(Path(resolved).resolve())
+
+
+def prepare_command(command):
+    """Resolve argv[0] and safely support Windows .cmd/.bat launchers."""
+    if not command:
+        raise ValueError("empty provider command")
+    executable = resolve_executable(command[0])
+    argv = [executable, *command[1:]]
+    if os.name == "nt" and Path(executable).suffix.lower() in {".cmd", ".bat"}:
+        comspec = resolve_executable(os.environ.get("COMSPEC", "cmd.exe"))
+        # shell=False prevents Python from adding another shell/parser layer.
+        return [comspec, "/d", "/q", "/v:off", "/s", "/c", subprocess.list2cmdline(argv)]
+    return argv
+
+
 def profile_available(profile):
-    return all(shutil.which(binary) for binary in profile.get("requires", []))
+    try:
+        for binary in profile.get("requires", []):
+            resolve_executable(binary)
+        return True
+    except (FileNotFoundError, OSError):
+        return False
+
+
+def strip_terminal_controls(text: str) -> str:
+    return TERMINAL_CONTROL_RE.sub("", text).replace("\r\n", "\n").replace("\r", "\n")
 
 
 def classify_failure(text: str, code: int) -> str:
@@ -191,7 +227,7 @@ def run_task(prompt, mode=None):
         print(f"[zero-$] trying {p['id']} mode={mode}...", file=sys.stderr)
         try:
             proc = subprocess.run(
-                cmd,
+                prepare_command(cmd),
                 cwd=Path.cwd(),
                 env=sanitized_env(p, policy),
                 text=True,
@@ -201,7 +237,7 @@ def run_task(prompt, mode=None):
                 stderr=subprocess.STDOUT,
                 timeout=int(p.get("timeout_seconds", 600)),
             )
-            output = proc.stdout or ""
+            output = strip_terminal_controls(proc.stdout or "")
             if output:
                 print(output, end="" if output.endswith("\n") else "\n")
 
@@ -225,8 +261,20 @@ def run_task(prompt, mode=None):
             pstate.update({"last_used": now(), "last_exit_code": 124, "last_failure_class": "timeout", "cooldown_until": now() + int(config["runtime_cooldown_seconds"])})
             save_state(state)
             print(f"[zero-$] {p['id']} timed out; switching...", file=sys.stderr)
-        except FileNotFoundError:
-            continue
+        except (FileNotFoundError, OSError) as exc:
+            failure = "unavailable" if isinstance(exc, FileNotFoundError) else "spawn"
+            cooldown = int(config["runtime_cooldown_seconds"])
+            pstate = state.setdefault("profiles", {}).setdefault(p["id"], {})
+            pstate.update({
+                "last_used": now(),
+                "last_exit_code": None,
+                "last_failure_class": failure,
+                "last_error": strip_terminal_controls(str(exc)),
+                "cooldown_until": now() + cooldown,
+            })
+            state.update({"last_task": prompt, "last_mode": mode, "last_profile": p["id"], "last_updated": now()})
+            save_state(state)
+            print(f"[zero-$] {p['id']} failed to start ({failure}); cooldown={cooldown}s; switching...", file=sys.stderr)
         except KeyboardInterrupt:
             print("\nInterrupted.", file=sys.stderr)
             return 130

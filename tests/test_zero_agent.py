@@ -23,6 +23,20 @@ class ZeroAgentTests(unittest.TestCase):
         self.assertEqual(zero_agent.classify_failure("boom", 1), "runtime")
         self.assertEqual(zero_agent.classify_failure("ok", 0), "success")
 
+    def test_ansi_is_stripped_before_classification(self):
+        dirty = "\x1b[31mHTTP 429 quota exceeded\x1b[0m\x1b]0;title\x07"
+        clean = zero_agent.strip_terminal_controls(dirty)
+        self.assertEqual(clean, "HTTP 429 quota exceeded")
+        self.assertEqual(zero_agent.classify_failure(clean, 1), "quota")
+
+    def test_windows_cmd_wrapper_resolution(self):
+        with patch.object(zero_agent.os, "name", "nt"), \
+             patch.object(zero_agent.shutil, "which", side_effect=[r"C:\npm\codex.cmd", r"C:\Windows\System32\cmd.exe"]):
+            command = zero_agent.prepare_command(["codex", "exec", "hello & goodbye"])
+        self.assertEqual(command[:6], [r"C:\Windows\System32\cmd.exe", "/d", "/q", "/v:off", "/s", "/c"])
+        self.assertIn(r"C:\npm\codex.cmd", command[6])
+        self.assertIn("hello & goodbye", command[6])
+
     def test_render_command(self):
         profile = {"command": ["agent", "--model", "{model}", "{prompt}"]}
         self.assertEqual(
@@ -74,12 +88,28 @@ class ZeroAgentTests(unittest.TestCase):
         with patch.object(zero_agent, "load_state", return_value={"profiles": {}}), \
              patch.object(zero_agent, "save_state"), \
              patch.object(zero_agent, "profile_available", return_value=True), \
+             patch.object(zero_agent, "prepare_command", side_effect=lambda command: command), \
              patch.object(zero_agent.subprocess, "run", return_value=fake_proc) as run:
             result = zero_agent.run_task("hello", mode="read")
             self.assertEqual(result, 0)
             kwargs = run.call_args.kwargs
             self.assertEqual(kwargs["encoding"], "utf-8")
             self.assertEqual(kwargs["errors"], "replace")
+            self.assertFalse(kwargs.get("shell", False))
+
+    def test_spawn_failure_is_persisted(self):
+        state = {"profiles": {}}
+        saved = []
+        with patch.object(zero_agent, "load_state", return_value=state), \
+             patch.object(zero_agent, "save_state", side_effect=lambda value: saved.append(value.copy())), \
+             patch.object(zero_agent, "profile_available", return_value=True), \
+             patch.object(zero_agent, "prepare_command", side_effect=FileNotFoundError("codex")):
+            result = zero_agent.run_task("hello", mode="write")
+        self.assertEqual(result, 2)
+        profile_state = state["profiles"]["codex-local"]
+        self.assertEqual(profile_state["last_failure_class"], "unavailable")
+        self.assertIsNone(profile_state["last_exit_code"])
+        self.assertTrue(saved)
 
 
 if __name__ == "__main__":
