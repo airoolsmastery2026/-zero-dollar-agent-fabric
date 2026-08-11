@@ -73,13 +73,14 @@ def resolve_executable(executable: str) -> str:
     return str(Path(resolved).resolve())
 
 
-def prepare_command(command):
+def prepare_command(command, platform_name=None):
     """Resolve argv[0] and safely support Windows .cmd/.bat launchers."""
     if not command:
         raise ValueError("empty provider command")
     executable = resolve_executable(command[0])
     argv = [executable, *command[1:]]
-    if os.name == "nt" and Path(executable).suffix.lower() in {".cmd", ".bat"}:
+    platform_name = platform_name or os.name
+    if platform_name == "nt" and Path(executable).suffix.lower() in {".cmd", ".bat"}:
         comspec = resolve_executable(os.environ.get("COMSPEC", "cmd.exe"))
         # shell=False prevents Python from adding another shell/parser layer.
         return [comspec, "/d", "/q", "/v:off", "/s", "/c", subprocess.list2cmdline(argv)]

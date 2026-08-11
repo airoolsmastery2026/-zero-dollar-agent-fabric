@@ -30,9 +30,14 @@ class ZeroAgentTests(unittest.TestCase):
         self.assertEqual(zero_agent.classify_failure(clean, 1), "quota")
 
     def test_windows_cmd_wrapper_resolution(self):
-        with patch.object(zero_agent.os, "name", "nt"), \
-             patch.object(zero_agent.shutil, "which", side_effect=[r"C:\npm\codex.cmd", r"C:\Windows\System32\cmd.exe"]):
-            command = zero_agent.prepare_command(["codex", "exec", "hello & goodbye"])
+        with patch.object(
+            zero_agent,
+            "resolve_executable",
+            side_effect=[r"C:\npm\codex.cmd", r"C:\Windows\System32\cmd.exe"],
+        ):
+            command = zero_agent.prepare_command(
+                ["codex", "exec", "hello & goodbye"], platform_name="nt"
+            )
         self.assertEqual(command[:6], [r"C:\Windows\System32\cmd.exe", "/d", "/q", "/v:off", "/s", "/c"])
         self.assertIn(r"C:\npm\codex.cmd", command[6])
         self.assertIn("hello & goodbye", command[6])
