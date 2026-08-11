@@ -103,6 +103,10 @@ def sanitized_env(profile, policy):
     if policy.get("absolute_zero", True):
         for key in policy.get("strip_environment_variables", []):
             env.pop(key, None)
+    # Normalize child-process text output across Windows CLIs. Python's Windows
+    # locale may otherwise default to cp1252 while Node/Rust CLIs emit UTF-8.
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    env.setdefault("PYTHONUTF8", "1")
     for k, v in profile.get("env", {}).items():
         env[k] = v
     return env
@@ -191,6 +195,8 @@ def run_task(prompt, mode=None):
                 cwd=Path.cwd(),
                 env=sanitized_env(p, policy),
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 timeout=int(p.get("timeout_seconds", 600)),
