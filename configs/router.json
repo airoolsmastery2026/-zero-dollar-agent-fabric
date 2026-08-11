@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "absolute_zero": true,
   "allow_zero_incremental": false,
-  "default_mode": "read",
+  "default_mode": "auto",
   "default_local_model_env": "ZERO_LOCAL_MODEL",
   "default_local_model": "qwen2.5-coder:7b",
   "quota_cooldown_seconds": 21600,

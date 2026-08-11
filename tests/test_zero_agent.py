@@ -36,6 +36,10 @@ class ZeroAgentTests(unittest.TestCase):
         self.assertEqual(zero_agent.classify_failure("boom", 1), "runtime")
         self.assertEqual(zero_agent.classify_failure("ok", 0), "success")
 
+    def test_success_exit_ignores_provider_warning_keywords(self):
+        output = "background refresh warning: rate limit reached\nZERO LOCAL WRITE PASS.\n"
+        self.assertEqual(zero_agent.classify_failure(output, 0), "success")
+
     def test_ansi_is_stripped_before_classification(self):
         dirty = "\x1b[31mHTTP 429 quota exceeded\x1b[0m\x1b]0;title\x07"
         clean = zero_agent.strip_terminal_controls(dirty)
@@ -54,6 +58,18 @@ class ZeroAgentTests(unittest.TestCase):
         prompt = "Reply exactly: ZERO LOCAL WRITE PASS. Do not modify any files."
         output = "different response\n"
         self.assertEqual(zero_agent.display_output(output, prompt, 0), output)
+
+    def test_task_mode_classification(self):
+        self.assertEqual(zero_agent.classify_task_mode("Fix the failing tests"), "write")
+        self.assertEqual(zero_agent.classify_task_mode("Review this pull request"), "review")
+        self.assertEqual(zero_agent.classify_task_mode("Explain why routing failed"), "reasoning")
+        self.assertEqual(zero_agent.classify_task_mode("List the configured profiles"), "read")
+
+    def test_task_mode_classification_honors_non_mutating_instruction(self):
+        self.assertEqual(
+            zero_agent.classify_task_mode("Inspect the code without modifying any files"),
+            "review",
+        )
 
     def test_windows_cmd_wrapper_resolution(self):
         with patch.object(
@@ -143,6 +159,7 @@ class ZeroAgentTests(unittest.TestCase):
     def test_hard_lock_configuration(self):
         config = json.loads((ROOT / "configs" / "router.json").read_text())
         self.assertTrue(config["absolute_zero"])
+        self.assertEqual(config["default_mode"], "auto")
         self.assertFalse(config["allow_zero_incremental"])
         self.assertFalse(any(p["cost_class"] == "paid" and p.get("enabled", True) for p in config["profiles"]))
 
@@ -199,6 +216,20 @@ class ZeroAgentTests(unittest.TestCase):
             self.assertEqual(kwargs["errors"], "replace")
             self.assertIs(kwargs["stdin"], zero_agent.subprocess.DEVNULL)
             self.assertFalse(kwargs.get("shell", False))
+
+    def test_run_task_auto_classifies_write_mode(self):
+        fake_proc = type("Proc", (), {"stdout": "ok\n", "returncode": 0})()
+        state = {"profiles": {}}
+        with patch.object(zero_agent, "load_state", return_value=state), \
+             patch.object(zero_agent, "save_state"), \
+             patch.object(zero_agent, "profile_available", return_value=True), \
+             patch.object(zero_agent, "profile_health", return_value=(True, "ready")), \
+             patch.object(zero_agent, "prepare_command", side_effect=lambda command: {"args": command}), \
+             patch.object(zero_agent.subprocess, "run", return_value=fake_proc):
+            result = zero_agent.run_task("Fix the failing tests")
+        self.assertEqual(result, 0)
+        self.assertEqual(state["last_mode"], "write")
+        self.assertEqual(state["last_profile"], "codex-local")
 
     def test_spawn_failure_is_persisted(self):
         state = {"profiles": {}}

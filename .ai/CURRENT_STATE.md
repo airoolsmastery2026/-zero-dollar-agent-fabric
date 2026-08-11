@@ -5,12 +5,14 @@ Version: `v0.2.0-dev`
 Implemented:
 
 - Config-driven provider profiles and task modes (`read`, `reasoning`, `review`, `write`).
+- Deterministic automatic task classification with an explicit `--mode` override.
 - `$0` hard-lock policy gate; paid profiles remain disabled.
 - Antigravity headless as a non-mutating cloud/session route for read/reasoning/review only.
 - MiniMax M3 through Ollama Free as a non-mutating reasoning/review fallback.
 - Codex + local Ollama as the verified write-capable continuity route.
 - Claude-local profile retained but disabled until end-to-end validation.
 - Failure classes learned from real tests: quota, subscription, eligibility, compatibility/tool-schema, auth, workspace-scope, timeout, runtime.
+- Exit-code-first failure classification prevents warning text from overriding successful executions.
 - Per-failure cooldowns and persistent routing state in `.zero/state.json`.
 - Paid API environment-variable stripping for child processes.
 - Doctor/status/run CLI commands with `--mode` support.

@@ -44,6 +44,23 @@ TERMINAL_CONTROL_RE = re.compile(
     r"\x1b(?:\][^\x07\x1b]*(?:\x07|\x1b\\)|\[[0-?]*[ -/]*[@-~]|[@-_])"
 )
 EXACT_REPLY_RE = re.compile(r"^\s*Reply exactly:\s*(.+?[.!?])(?:\s|$)", re.IGNORECASE)
+NON_MUTATING_RE = re.compile(
+    r"\b(?:do not|don't|without)\s+(?:modify|change|edit|write|delete)\b|\bread[- ]only\b",
+    re.IGNORECASE,
+)
+WRITE_TASK_RE = re.compile(
+    r"\b(?:add|build|commit|create|delete|edit|fix|implement|migrate|modify|patch|"
+    r"refactor|remove|rename|replace|update|upgrade|write)\b",
+    re.IGNORECASE,
+)
+REVIEW_TASK_RE = re.compile(
+    r"\b(?:audit|code review|pull request|review)\b|\b(?:inspect|check)\b.*\b(?:diff|changes|code)\b",
+    re.IGNORECASE,
+)
+REASONING_TASK_RE = re.compile(
+    r"\b(?:analy[sz]e|compare|design|diagnose|explain|investigate|plan|reason|research|why)\b",
+    re.IGNORECASE,
+)
 
 
 def load_json(path: Path):
@@ -196,8 +213,23 @@ def display_output(output: str, prompt: str, code: int) -> str:
     return output
 
 
+def classify_task_mode(prompt: str) -> str:
+    """Classify a task deterministically, failing toward non-mutating modes."""
+    if not NON_MUTATING_RE.search(prompt) and WRITE_TASK_RE.search(prompt):
+        return "write"
+    if REVIEW_TASK_RE.search(prompt):
+        return "review"
+    if REASONING_TASK_RE.search(prompt):
+        return "reasoning"
+    return "read"
+
+
 def classify_failure(text: str, code: int) -> str:
     low = text.lower()
+    if code == 0:
+        if any(p in low for p in WORKSPACE_PATTERNS):
+            return "workspace"
+        return "success"
     if any(p in low for p in SUBSCRIPTION_PATTERNS):
         return "subscription"
     if any(p in low for p in ELIGIBILITY_PATTERNS):
@@ -208,10 +240,6 @@ def classify_failure(text: str, code: int) -> str:
         return "compatibility"
     if any(p in low for p in AUTH_PATTERNS):
         return "auth"
-    if any(p in low for p in WORKSPACE_PATTERNS):
-        return "workspace"
-    if code == 0:
-        return "success"
     return "runtime"
 
 
@@ -305,7 +333,9 @@ def run_task(prompt, mode=None):
     config = load_json(CONFIG_PATH)
     policy = load_json(POLICY_PATH)
     state = load_state()
-    mode = mode or config.get("default_mode", "read")
+    mode = mode or config.get("default_mode", "auto")
+    if mode == "auto":
+        mode = classify_task_mode(prompt)
     model = os.getenv(config["default_local_model_env"], config["default_local_model"])
 
     candidates = sorted(config["profiles"], key=lambda x: x["priority"])

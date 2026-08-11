@@ -38,6 +38,10 @@ Local profiles normally use a short cooldown; cloud free profiles use a longer c
 
 Configured Ollama routes query the local `/api/tags` endpoint before execution. A route is usable only when the daemon responds and its required model is advertised. These probes do not generate tokens or bypass the cost-policy gate.
 
+## Task classification
+
+When no mode is supplied, deterministic patterns classify the task as `read`, `reasoning`, `review`, or `write`. Mutating verbs select `write`; explicit non-mutating language suppresses `write`. Ambiguous tasks fail toward `read`, and `--mode` remains an explicit override.
+
 ## State continuity
 
 The wrapper stores:

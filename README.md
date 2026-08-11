@@ -96,6 +96,8 @@ For configured Ollama routes, diagnostics verify both the local daemon and requi
 python scripts/zero_agent.py run "Inspect this repo, fix the failing tests, then run the relevant test suite."
 ```
 
+The default mode is `auto`: deterministic local rules select `read`, `reasoning`, `review`, or `write`. Use `--mode MODE` to override classification explicitly.
+
 ### 7. Inspect routing state
 
 ```bash
@@ -147,7 +149,7 @@ CI validates Python 3.11, 3.12, and 3.13 plus JSON configuration syntax.
 
 - Ollama daemon/model health probes (implemented)
 - Multiple local models with capability tags
-- Task classification and capability-based routing
+- Deterministic task classification (implemented); capability refinement remains
 - Checkpoints before agent handoff
 - Structured error detection
 - Portable setup installer
