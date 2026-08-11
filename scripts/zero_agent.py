@@ -73,6 +73,15 @@ def resolve_executable(executable: str) -> str:
     return str(Path(resolved).resolve())
 
 
+def quote_batch_arg(value: str) -> str:
+    """Quote one value for cmd plus the second parse performed by a batch file."""
+    escaped = value.replace("^", "^^").replace("%", "%%")
+    for char in "&|<>()":
+        escaped = escaped.replace(char, f"^{char}")
+    escaped = escaped.replace('"', r'\"')
+    return f'"{escaped}"'
+
+
 def prepare_command(command, platform_name=None):
     """Resolve argv[0] and safely support Windows .cmd/.bat launchers."""
     if not command:
@@ -82,13 +91,13 @@ def prepare_command(command, platform_name=None):
     platform_name = platform_name or os.name
     if platform_name == "nt" and Path(executable).suffix.lower() in {".cmd", ".bat"}:
         comspec = resolve_executable(os.environ.get("COMSPEC", "cmd.exe"))
-        # shell=False prevents Python from adding another shell/parser layer.
-        # cmd /s strips the first and last quotes from its command string. The
-        # extra outer pair preserves list2cmdline's quoting, so an npm wrapper
-        # receives a multi-word prompt as one argv item instead of many.
-        command_line = subprocess.list2cmdline(argv)
-        return [comspec, "/d", "/q", "/v:off", "/s", "/c", f'"{command_line}"']
-    return argv
+        inner = " ".join(quote_batch_arg(value) for value in argv)
+        # A raw lpCommandLine avoids Python backslash-escaping the quotes that
+        # cmd.exe itself must consume. executable remains absolute and
+        # shell=False; metacharacters are escaped for the wrapper's second parse.
+        raw = f'{quote_batch_arg(comspec)} /d /q /v:off /s /c "{inner}"'
+        return {"args": raw, "executable": comspec}
+    return {"args": argv}
 
 
 def profile_available(profile):
@@ -231,8 +240,10 @@ def run_task(prompt, mode=None):
         cmd = render_command(p, prompt, model)
         print(f"[zero-$] trying {p['id']} mode={mode}...", file=sys.stderr)
         try:
+            prepared = prepare_command(cmd)
             proc = subprocess.run(
-                prepare_command(cmd),
+                prepared["args"],
+                **({"executable": prepared["executable"]} if "executable" in prepared else {}),
                 cwd=Path.cwd(),
                 env=sanitized_env(p, policy),
                 text=True,
@@ -317,3 +328,4 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
