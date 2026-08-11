@@ -38,11 +38,9 @@ class ZeroAgentTests(unittest.TestCase):
             command = zero_agent.prepare_command(
                 ["codex", "exec", "hello & goodbye"], platform_name="nt"
             )
-        self.assertEqual(command[:6], [r"C:\Windows\System32\cmd.exe", "/d", "/q", "/v:off", "/s", "/c"])
-        self.assertIn(r"C:\npm\codex.cmd", command[6])
-        self.assertTrue(command[6].startswith('"'))
-        self.assertTrue(command[6].endswith('"'))
-        self.assertIn('"hello & goodbye"', command[6])
+        self.assertEqual(command["executable"], r"C:\Windows\System32\cmd.exe")
+        self.assertIn('/d /q /v:off /s /c', command["args"])
+        self.assertIn('"hello ^& goodbye"', command["args"])
 
     def test_render_command(self):
         profile = {"command": ["agent", "--model", "{model}", "{prompt}"]}
@@ -95,7 +93,7 @@ class ZeroAgentTests(unittest.TestCase):
         with patch.object(zero_agent, "load_state", return_value={"profiles": {}}), \
              patch.object(zero_agent, "save_state"), \
              patch.object(zero_agent, "profile_available", return_value=True), \
-             patch.object(zero_agent, "prepare_command", side_effect=lambda command: command), \
+             patch.object(zero_agent, "prepare_command", side_effect=lambda command: {"args": command}), \
              patch.object(zero_agent.subprocess, "run", return_value=fake_proc) as run:
             result = zero_agent.run_task("hello", mode="read")
             self.assertEqual(result, 0)
@@ -121,3 +119,4 @@ class ZeroAgentTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
