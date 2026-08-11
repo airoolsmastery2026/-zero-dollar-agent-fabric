@@ -34,6 +34,10 @@ failure / quota / 429                      │
 Quota failures are placed in cooldown for a configurable duration.
 Local profiles normally use a short cooldown; cloud free profiles use a longer cooldown.
 
+## Health probes
+
+Configured Ollama routes query the local `/api/tags` endpoint before execution. A route is usable only when the daemon responds and its required model is advertised. These probes do not generate tokens or bypass the cost-policy gate.
+
 ## State continuity
 
 The wrapper stores:

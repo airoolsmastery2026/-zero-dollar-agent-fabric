@@ -14,6 +14,7 @@ Implemented:
 - Per-failure cooldowns and persistent routing state in `.zero/state.json`.
 - Paid API environment-variable stripping for child processes.
 - Doctor/status/run CLI commands with `--mode` support.
+- Non-generating Ollama daemon and model health probes for configured Ollama routes.
 - Unit tests and GitHub Actions validation.
 
 Safety/cost invariants:
@@ -25,7 +26,7 @@ Safety/cost invariants:
 
 Known limitations:
 
-- Local provider health is executable-based rather than model/endpoint-aware.
+- Antigravity session readiness and Ollama cloud entitlement probes are not yet implemented.
 - Local Qwen2.5-Coder 7B is reliable but slow on CPU-only hardware.
 - No validated local FAST model pool yet.
 - Headless Antigravity workspace binding requires further validation before enabling write mode.

@@ -13,6 +13,19 @@ SPEC.loader.exec_module(zero_agent)
 
 
 class ZeroAgentTests(unittest.TestCase):
+    class FakeResponse:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return json.dumps(self.payload).encode("utf-8")
+
     def test_failure_classification(self):
         self.assertEqual(zero_agent.classify_failure("HTTP 429 quota exceeded", 1), "quota")
         self.assertEqual(zero_agent.classify_failure("authentication required", 1), "auth")
@@ -90,6 +103,36 @@ class ZeroAgentTests(unittest.TestCase):
             resolved = zero_agent.resolve_executable("codex", platform_name="nt")
         self.assertEqual(resolved, str(expected))
 
+    def test_ollama_health_probe_requires_daemon_model(self):
+        profile = {"health_probe": {"type": "ollama-model", "model": "{model}"}}
+        opener = lambda _request, timeout: self.FakeResponse({
+            "models": [{"name": "qwen2.5-coder:7b"}],
+        })
+        healthy, detail = zero_agent.profile_health(
+            profile,
+            "qwen2.5-coder:7b",
+            opener=opener,
+        )
+        self.assertTrue(healthy)
+        self.assertIn("model ready", detail)
+
+    def test_ollama_health_probe_reports_missing_model(self):
+        profile = {"health_probe": {"type": "ollama-model", "model": "wanted:latest"}}
+        opener = lambda _request, timeout: self.FakeResponse({"models": []})
+        healthy, detail = zero_agent.profile_health(profile, "unused", opener=opener)
+        self.assertFalse(healthy)
+        self.assertEqual(detail, "ollama model missing: wanted:latest")
+
+    def test_ollama_health_probe_reports_unreachable_daemon(self):
+        profile = {"health_probe": {"type": "ollama-model", "model": "wanted:latest"}}
+
+        def unavailable(_request, timeout):
+            raise zero_agent.URLError("connection refused")
+
+        healthy, detail = zero_agent.profile_health(profile, "unused", opener=unavailable)
+        self.assertFalse(healthy)
+        self.assertIn("ollama daemon unreachable", detail)
+
     def test_render_command(self):
         profile = {"command": ["agent", "--model", "{model}", "{prompt}"]}
         self.assertEqual(
@@ -111,6 +154,7 @@ class ZeroAgentTests(unittest.TestCase):
         self.assertIn("write", profiles["codex-local"]["modes"])
         self.assertIn("--ignore-user-config", profiles["codex-local"]["command"])
         self.assertIn("--ephemeral", profiles["codex-local"]["command"])
+        self.assertEqual(profiles["codex-local"]["health_probe"]["model"], "{model}")
         self.assertIn("Return only the final answer as plain text", profiles["codex-local"]["command"][-1])
         self.assertIn("{prompt}", profiles["codex-local"]["command"][-1])
 
@@ -145,6 +189,7 @@ class ZeroAgentTests(unittest.TestCase):
         with patch.object(zero_agent, "load_state", return_value={"profiles": {}}), \
              patch.object(zero_agent, "save_state"), \
              patch.object(zero_agent, "profile_available", return_value=True), \
+             patch.object(zero_agent, "profile_health", return_value=(True, "ready")), \
              patch.object(zero_agent, "prepare_command", side_effect=lambda command: {"args": command}), \
              patch.object(zero_agent.subprocess, "run", return_value=fake_proc) as run:
             result = zero_agent.run_task("hello", mode="read")
@@ -161,6 +206,7 @@ class ZeroAgentTests(unittest.TestCase):
         with patch.object(zero_agent, "load_state", return_value=state), \
              patch.object(zero_agent, "save_state", side_effect=lambda value: saved.append(value.copy())), \
              patch.object(zero_agent, "profile_available", return_value=True), \
+             patch.object(zero_agent, "profile_health", return_value=(True, "ready")), \
              patch.object(zero_agent, "prepare_command", side_effect=FileNotFoundError("codex")):
             result = zero_agent.run_task("hello", mode="write")
         self.assertEqual(result, 2)

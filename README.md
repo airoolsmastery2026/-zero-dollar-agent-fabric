@@ -88,6 +88,8 @@ For Gemini CLI, sign in with a personal Google account if you want to use its of
 python scripts/zero_agent.py doctor
 ```
 
+For configured Ollama routes, diagnostics verify both the local daemon and required model through the non-generating `/api/tags` endpoint.
+
 ### 6. Run a task
 
 ```bash
@@ -143,7 +145,7 @@ CI validates Python 3.11, 3.12, and 3.13 plus JSON configuration syntax.
 
 ### v0.2 — Local Model Pool
 
-- Ollama daemon/model health probes
+- Ollama daemon/model health probes (implemented)
 - Multiple local models with capability tags
 - Task classification and capability-based routing
 - Checkpoints before agent handoff

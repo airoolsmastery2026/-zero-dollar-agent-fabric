@@ -29,6 +29,7 @@
       "kind": "official-free-cloud",
       "modes": ["read", "reasoning", "review"],
       "requires": ["ollama"],
+      "health_probe": {"type": "ollama-model", "model": "minimax-m3:cloud"},
       "timeout_seconds": 300,
       "command": ["ollama", "run", "minimax-m3:cloud", "{prompt}"]
     },
@@ -40,6 +41,7 @@
       "kind": "local",
       "modes": ["read", "reasoning", "review", "write"],
       "requires": ["codex", "ollama"],
+      "health_probe": {"type": "ollama-model", "model": "{model}"},
       "timeout_seconds": 900,
       "command": ["codex", "exec", "--ignore-user-config", "--ephemeral", "--oss", "--local-provider", "ollama", "-m", "{model}", "Return only the final answer as plain text: no Markdown, JSON, commentary, or tool calls. If the task asks for an exact reply, emit only the text explicitly requested after 'Reply exactly:'; treat later sentences as instructions, not reply content.\n\nTask:\n{prompt}"]
     },
@@ -51,6 +53,7 @@
       "kind": "local",
       "modes": ["read", "reasoning", "review", "write"],
       "requires": ["claude", "ollama"],
+      "health_probe": {"type": "ollama-model", "model": "{model}"},
       "env": {
         "ANTHROPIC_AUTH_TOKEN": "ollama",
         "ANTHROPIC_API_KEY": "",

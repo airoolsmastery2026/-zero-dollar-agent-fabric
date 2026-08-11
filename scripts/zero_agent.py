@@ -9,6 +9,8 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "configs" / "router.json"
@@ -138,6 +140,48 @@ def profile_available(profile):
         return False
 
 
+def ollama_base_url(environ=None):
+    environ = environ or os.environ
+    base_url = environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+    if "://" not in base_url:
+        base_url = f"http://{base_url}"
+    return base_url.rstrip("/")
+
+
+def ollama_models(environ=None, opener=None, timeout=2):
+    """Return model names advertised by the local Ollama daemon."""
+    opener = opener or urlopen
+    request = Request(
+        f"{ollama_base_url(environ)}/api/tags",
+        headers={"Accept": "application/json"},
+    )
+    with opener(request, timeout=timeout) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    return {
+        name
+        for item in payload.get("models", [])
+        for name in (item.get("name"), item.get("model"))
+        if name
+    }
+
+
+def profile_health(profile, model, environ=None, opener=None):
+    """Run a configured non-generating health probe for one profile."""
+    probe = profile.get("health_probe")
+    if not probe:
+        return True, "executable-only"
+    if probe.get("type") != "ollama-model":
+        return False, f"unsupported health probe: {probe.get('type')}"
+    required_model = probe.get("model", "{model}").replace("{model}", model)
+    try:
+        models = ollama_models(environ=environ, opener=opener)
+    except (OSError, URLError, ValueError, json.JSONDecodeError) as exc:
+        return False, f"ollama daemon unreachable: {strip_terminal_controls(str(exc))}"
+    if required_model not in models:
+        return False, f"ollama model missing: {required_model}"
+    return True, f"ollama model ready: {required_model}"
+
+
 def strip_terminal_controls(text: str) -> str:
     return TERMINAL_CONTROL_RE.sub("", text).replace("\r\n", "\n").replace("\r", "\n")
 
@@ -236,15 +280,19 @@ def doctor(config):
             state = "disabled"
         elif not profile_available(p):
             state = "missing dependency"
-        elif not profile_allowed(
-            p,
-            next(iter(p.get("modes", ["read"])), "read"),
-            config.get("absolute_zero", True),
-            config.get("allow_zero_incremental", False),
-        ):
-            state = "blocked-by-cost-policy"
         else:
-            state = "available"
+            healthy, health_detail = profile_health(p, model)
+            if not healthy:
+                state = health_detail
+            elif not profile_allowed(
+                p,
+                next(iter(p.get("modes", ["read"])), "read"),
+                config.get("absolute_zero", True),
+                config.get("allow_zero_incremental", False),
+            ):
+                state = "blocked-by-cost-policy"
+            else:
+                state = "available"
         modes = ",".join(p.get("modes", [])) or "-"
         print(f"- {p['id']}: {state}; cost={p['cost_class']}; kind={p['kind']}; modes={modes}")
 
@@ -270,6 +318,9 @@ def run_task(prompt, mode=None):
         ):
             continue
         if not profile_available(p):
+            continue
+        healthy, _health_detail = profile_health(p, model)
+        if not healthy:
             continue
 
         active, _until = cooldown_active(state, p["id"])
