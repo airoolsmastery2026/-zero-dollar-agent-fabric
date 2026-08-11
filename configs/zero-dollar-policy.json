@@ -1,0 +1,23 @@
+{
+  "version": "0.1.0",
+  "absolute_zero": true,
+  "rules": [
+    "Never invoke a profile whose cost_class is not zero.",
+    "Never auto-upgrade or attach billing.",
+    "Never use promotional credit as a durability dependency.",
+    "Cloud quota exhaustion must fall through to another zero-cost profile.",
+    "A local Ollama path must remain available as the final continuity layer.",
+    "Do not commit provider secrets.",
+    "Persist routing state so failed providers can cool down."
+  ],
+  "strip_environment_variables": [
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "GOOGLE_API_KEY",
+    "GEMINI_API_KEY",
+    "OPENROUTER_API_KEY",
+    "AZURE_OPENAI_API_KEY",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY"
+  ]
+}

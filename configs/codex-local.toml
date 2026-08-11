@@ -1,0 +1,7 @@
+# Example user-level Codex local config.
+# Merge carefully into ~/.codex/config.toml if desired.
+
+oss_provider = "ollama"
+
+# Run:
+# codex --oss -m YOUR_OLLAMA_MODEL

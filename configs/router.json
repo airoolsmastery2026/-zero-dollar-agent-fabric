@@ -1,0 +1,51 @@
+{
+  "version": "0.1.0",
+  "absolute_zero": true,
+  "default_local_model_env": "ZERO_LOCAL_MODEL",
+  "default_local_model": "CHANGE_ME",
+  "quota_cooldown_seconds": 21600,
+  "runtime_cooldown_seconds": 300,
+  "profiles": [
+    {
+      "id": "codex-local",
+      "enabled": true,
+      "priority": 10,
+      "cost_class": "zero",
+      "kind": "local",
+      "requires": ["codex", "ollama"],
+      "command": ["codex", "exec", "--oss", "-m", "{model}", "{prompt}"]
+    },
+    {
+      "id": "claude-local",
+      "enabled": true,
+      "priority": 20,
+      "cost_class": "zero",
+      "kind": "local",
+      "requires": ["claude", "ollama"],
+      "env": {
+        "ANTHROPIC_AUTH_TOKEN": "ollama",
+        "ANTHROPIC_API_KEY": "",
+        "ANTHROPIC_BASE_URL": "http://localhost:11434"
+      },
+      "command": ["claude", "--model", "{model}", "-p", "{prompt}"]
+    },
+    {
+      "id": "gemini-free",
+      "enabled": true,
+      "priority": 30,
+      "cost_class": "zero",
+      "kind": "official-free-cloud",
+      "requires": ["gemini"],
+      "command": ["gemini", "-p", "{prompt}", "--approval-mode=auto_edit"]
+    },
+    {
+      "id": "paid-provider-placeholder",
+      "enabled": false,
+      "priority": 999,
+      "cost_class": "paid",
+      "kind": "paid",
+      "requires": [],
+      "command": []
+    }
+  ]
+}

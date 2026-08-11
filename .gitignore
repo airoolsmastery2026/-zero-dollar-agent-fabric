@@ -1,0 +1,19 @@
+# Runtime state
+.zero/state.json
+
+# Secrets / local environment
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Editors / OS
+.DS_Store
+.vscode/
+.idea/
