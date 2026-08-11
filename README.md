@@ -90,6 +90,8 @@ python scripts/zero_agent.py doctor
 
 For configured Ollama routes, diagnostics verify both the local daemon and required model through the non-generating `/api/tags` endpoint.
 
+The default local pool uses `qwen2.5-coder:1.5b` as FAST for non-mutating work and `qwen2.5-coder:7b` as QUALITY for Codex-backed writes.
+
 ### 6. Run a task
 
 ```bash
@@ -148,7 +150,7 @@ CI validates Python 3.11, 3.12, and 3.13 plus JSON configuration syntax.
 ### v0.2 — Local Model Pool
 
 - Ollama daemon/model health probes (implemented)
-- Multiple local models with capability tags
+- FAST/QUALITY local model tiers (implemented); broader capability rotation remains
 - Deterministic task classification (implemented); capability refinement remains
 - Checkpoints before agent handoff
 - Structured error detection

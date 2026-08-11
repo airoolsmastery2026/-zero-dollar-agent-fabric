@@ -42,6 +42,10 @@ Configured Ollama routes query the local `/api/tags` endpoint before execution. 
 
 When no mode is supplied, deterministic patterns classify the task as `read`, `reasoning`, `review`, or `write`. Mutating verbs select `write`; explicit non-mutating language suppresses `write`. Ambiguous tasks fail toward `read`, and `--mode` remains an explicit override.
 
+## Local model tiers
+
+`qwen2.5-coder:1.5b` is the FAST local route for `read`, `reasoning`, and `review`. It is intentionally excluded from `write`. `qwen2.5-coder:7b` remains the QUALITY model behind the Codex local write-capable route.
+
 ## State continuity
 
 The wrapper stores:

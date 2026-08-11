@@ -168,7 +168,16 @@ class ZeroAgentTests(unittest.TestCase):
         profiles = {p["id"]: p for p in config["profiles"]}
         self.assertNotIn("write", profiles["antigravity-headless"]["modes"])
         self.assertNotIn("write", profiles["minimax-m3-free"]["modes"])
+        self.assertNotIn("write", profiles["ollama-fast-local"]["modes"])
         self.assertIn("write", profiles["codex-local"]["modes"])
+        self.assertLess(
+            profiles["ollama-fast-local"]["priority"],
+            profiles["minimax-m3-free"]["priority"],
+        )
+        self.assertEqual(
+            profiles["ollama-fast-local"]["health_probe"]["model"],
+            "qwen2.5-coder:1.5b",
+        )
         self.assertIn("--ignore-user-config", profiles["codex-local"]["command"])
         self.assertIn("--ephemeral", profiles["codex-local"]["command"])
         self.assertEqual(profiles["codex-local"]["health_probe"]["model"], "{model}")

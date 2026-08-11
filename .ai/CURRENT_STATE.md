@@ -10,6 +10,7 @@ Implemented:
 - Antigravity headless as a non-mutating cloud/session route for read/reasoning/review only.
 - MiniMax M3 through Ollama Free as a non-mutating reasoning/review fallback.
 - Codex + local Ollama as the verified write-capable continuity route.
+- Qwen2.5-Coder 1.5B as a validated local FAST route for non-mutating modes; Qwen2.5-Coder 7B remains WRITE QUALITY.
 - Claude-local profile retained but disabled until end-to-end validation.
 - Failure classes learned from real tests: quota, subscription, eligibility, compatibility/tool-schema, auth, workspace-scope, timeout, runtime.
 - Exit-code-first failure classification prevents warning text from overriding successful executions.
@@ -30,6 +31,6 @@ Known limitations:
 
 - Antigravity session readiness and Ollama cloud entitlement probes are not yet implemented.
 - Local Qwen2.5-Coder 7B is reliable but slow on CPU-only hardware.
-- No validated local FAST model pool yet.
+- FAST currently has one validated model; broader local model rotation is not yet implemented.
 - Headless Antigravity workspace binding requires further validation before enabling write mode.
 - Handoff uses repository state + task text; interactive conversation state is not migrated across shells.

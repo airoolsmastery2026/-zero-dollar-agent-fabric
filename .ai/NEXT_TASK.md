@@ -5,7 +5,7 @@ Target: `v0.2.0 — Automatic Failover Stabilization`
 Priority work:
 
 1. Add explicit health probes for Antigravity session readiness and Ollama cloud entitlement; Ollama daemon and configured-model probes are implemented.
-2. Add a validated local FAST model profile alongside Qwen2.5-Coder 7B QUALITY.
+2. Expand the implemented Qwen2.5-Coder 1.5B FAST profile into capability-based local model rotation; Qwen2.5-Coder 7B remains WRITE QUALITY.
 3. Refine the implemented deterministic task classification as real prompts reveal additional safe patterns.
 4. Validate project-scoped Antigravity headless writes before adding `write` to its modes; scratch writes must be treated as `workspace` failures.
 5. Add checkpoint hooks before shell handoff (`git diff` summary + optional safe commit mode).

@@ -22,6 +22,18 @@
       "command": ["agy", "--print", "{prompt}"]
     },
     {
+      "id": "ollama-fast-local",
+      "enabled": true,
+      "priority": 15,
+      "cost_class": "zero",
+      "kind": "local",
+      "modes": ["read", "reasoning", "review"],
+      "requires": ["ollama"],
+      "health_probe": {"type": "ollama-model", "model": "qwen2.5-coder:1.5b"},
+      "timeout_seconds": 180,
+      "command": ["ollama", "run", "qwen2.5-coder:1.5b", "{prompt}"]
+    },
+    {
       "id": "minimax-m3-free",
       "enabled": true,
       "priority": 20,
