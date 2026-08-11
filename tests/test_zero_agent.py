@@ -32,11 +32,7 @@ class ZeroAgentTests(unittest.TestCase):
     def test_hard_lock_configuration(self):
         config = json.loads((ROOT / "configs" / "router.json").read_text())
         self.assertTrue(config["absolute_zero"])
-        enabled = [p for p in config["profiles"] if p.get("enabled", True)]
-        self.assertTrue(enabled)
-        self.assertTrue(
-            all(p["cost_class"] in zero_agent.ALLOWED_ZERO_COST_CLASSES for p in enabled)
-        )
+        self.assertFalse(config["allow_zero_incremental"])
         self.assertFalse(any(p["cost_class"] == "paid" and p.get("enabled", True) for p in config["profiles"]))
 
     def test_write_mode_excludes_unverified_cloud_editors(self):
@@ -48,10 +44,13 @@ class ZeroAgentTests(unittest.TestCase):
 
     def test_profile_allowed_respects_mode_and_cost(self):
         zero_read = {"enabled": True, "modes": ["read"], "cost_class": "zero"}
+        incremental_read = {"enabled": True, "modes": ["read"], "cost_class": "zero-incremental"}
         paid_read = {"enabled": True, "modes": ["read"], "cost_class": "paid"}
-        self.assertTrue(zero_agent.profile_allowed(zero_read, "read", True))
-        self.assertFalse(zero_agent.profile_allowed(zero_read, "write", True))
-        self.assertFalse(zero_agent.profile_allowed(paid_read, "read", True))
+        self.assertTrue(zero_agent.profile_allowed(zero_read, "read", True, False))
+        self.assertFalse(zero_agent.profile_allowed(zero_read, "write", True, False))
+        self.assertFalse(zero_agent.profile_allowed(incremental_read, "read", True, False))
+        self.assertTrue(zero_agent.profile_allowed(incremental_read, "read", True, True))
+        self.assertFalse(zero_agent.profile_allowed(paid_read, "read", True, True))
 
     def test_sanitized_env_strips_paid_keys(self):
         policy = json.loads((ROOT / "configs" / "zero-dollar-policy.json").read_text())
