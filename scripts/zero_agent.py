@@ -83,7 +83,11 @@ def prepare_command(command, platform_name=None):
     if platform_name == "nt" and Path(executable).suffix.lower() in {".cmd", ".bat"}:
         comspec = resolve_executable(os.environ.get("COMSPEC", "cmd.exe"))
         # shell=False prevents Python from adding another shell/parser layer.
-        return [comspec, "/d", "/q", "/v:off", "/s", "/c", subprocess.list2cmdline(argv)]
+        # cmd /s strips the first and last quotes from its command string. The
+        # extra outer pair preserves list2cmdline's quoting, so an npm wrapper
+        # receives a multi-word prompt as one argv item instead of many.
+        command_line = subprocess.list2cmdline(argv)
+        return [comspec, "/d", "/q", "/v:off", "/s", "/c", f'"{command_line}"']
     return argv
 
 

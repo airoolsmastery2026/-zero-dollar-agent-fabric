@@ -40,7 +40,9 @@ class ZeroAgentTests(unittest.TestCase):
             )
         self.assertEqual(command[:6], [r"C:\Windows\System32\cmd.exe", "/d", "/q", "/v:off", "/s", "/c"])
         self.assertIn(r"C:\npm\codex.cmd", command[6])
-        self.assertIn("hello & goodbye", command[6])
+        self.assertTrue(command[6].startswith('"'))
+        self.assertTrue(command[6].endswith('"'))
+        self.assertIn('"hello & goodbye"', command[6])
 
     def test_render_command(self):
         profile = {"command": ["agent", "--model", "{model}", "{prompt}"]}
