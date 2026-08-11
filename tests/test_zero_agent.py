@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("zero_agent", ROOT / "scripts" / "zero_agent.py")
@@ -52,7 +53,7 @@ class ZeroAgentTests(unittest.TestCase):
         self.assertTrue(zero_agent.profile_allowed(incremental_read, "read", True, True))
         self.assertFalse(zero_agent.profile_allowed(paid_read, "read", True, True))
 
-    def test_sanitized_env_strips_paid_keys(self):
+    def test_sanitized_env_strips_paid_keys_and_forces_utf8(self):
         policy = json.loads((ROOT / "configs" / "zero-dollar-policy.json").read_text())
         previous = os.environ.get("OPENAI_API_KEY")
         os.environ["OPENAI_API_KEY"] = "must-not-leak"
@@ -60,11 +61,25 @@ class ZeroAgentTests(unittest.TestCase):
             env = zero_agent.sanitized_env({"env": {"LOCAL_ONLY": "1"}}, policy)
             self.assertNotIn("OPENAI_API_KEY", env)
             self.assertEqual(env["LOCAL_ONLY"], "1")
+            self.assertEqual(env["PYTHONIOENCODING"], "utf-8")
+            self.assertEqual(env["PYTHONUTF8"], "1")
         finally:
             if previous is None:
                 os.environ.pop("OPENAI_API_KEY", None)
             else:
                 os.environ["OPENAI_API_KEY"] = previous
+
+    def test_run_task_uses_utf8_replacement_decoding(self):
+        fake_proc = type("Proc", (), {"stdout": "ok\n", "returncode": 0})()
+        with patch.object(zero_agent, "load_state", return_value={"profiles": {}}), \
+             patch.object(zero_agent, "save_state"), \
+             patch.object(zero_agent, "profile_available", return_value=True), \
+             patch.object(zero_agent.subprocess, "run", return_value=fake_proc) as run:
+            result = zero_agent.run_task("hello", mode="read")
+            self.assertEqual(result, 0)
+            kwargs = run.call_args.kwargs
+            self.assertEqual(kwargs["encoding"], "utf-8")
+            self.assertEqual(kwargs["errors"], "replace")
 
 
 if __name__ == "__main__":
