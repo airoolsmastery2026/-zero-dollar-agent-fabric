@@ -1,26 +1,54 @@
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "absolute_zero": true,
+  "default_mode": "read",
   "default_local_model_env": "ZERO_LOCAL_MODEL",
-  "default_local_model": "CHANGE_ME",
+  "default_local_model": "qwen2.5-coder:7b",
   "quota_cooldown_seconds": 21600,
   "runtime_cooldown_seconds": 300,
+  "compatibility_cooldown_seconds": 86400,
+  "eligibility_cooldown_seconds": 604800,
   "profiles": [
     {
-      "id": "codex-local",
+      "id": "antigravity-headless",
       "enabled": true,
       "priority": 10,
-      "cost_class": "zero",
-      "kind": "local",
-      "requires": ["codex", "ollama"],
-      "command": ["codex", "exec", "--oss", "-m", "{model}", "{prompt}"]
+      "cost_class": "zero-incremental",
+      "kind": "official-cloud-session",
+      "modes": ["read", "reasoning", "review"],
+      "requires": ["agy"],
+      "timeout_seconds": 300,
+      "command": ["agy", "--print", "{prompt}"]
     },
     {
-      "id": "claude-local",
+      "id": "minimax-m3-free",
       "enabled": true,
       "priority": 20,
       "cost_class": "zero",
+      "kind": "official-free-cloud",
+      "modes": ["read", "reasoning", "review"],
+      "requires": ["ollama"],
+      "timeout_seconds": 300,
+      "command": ["ollama", "run", "minimax-m3:cloud", "{prompt}"]
+    },
+    {
+      "id": "codex-local",
+      "enabled": true,
+      "priority": 30,
+      "cost_class": "zero",
       "kind": "local",
+      "modes": ["read", "reasoning", "review", "write"],
+      "requires": ["codex", "ollama"],
+      "timeout_seconds": 900,
+      "command": ["codex", "exec", "--oss", "--local-provider", "ollama", "-m", "{model}", "{prompt}"]
+    },
+    {
+      "id": "claude-local",
+      "enabled": false,
+      "priority": 40,
+      "cost_class": "zero",
+      "kind": "local",
+      "modes": ["read", "reasoning", "review", "write"],
       "requires": ["claude", "ollama"],
       "env": {
         "ANTHROPIC_AUTH_TOKEN": "ollama",
@@ -30,20 +58,12 @@
       "command": ["claude", "--model", "{model}", "-p", "{prompt}"]
     },
     {
-      "id": "gemini-free",
-      "enabled": true,
-      "priority": 30,
-      "cost_class": "zero",
-      "kind": "official-free-cloud",
-      "requires": ["gemini"],
-      "command": ["gemini", "-p", "{prompt}", "--approval-mode=auto_edit"]
-    },
-    {
       "id": "paid-provider-placeholder",
       "enabled": false,
       "priority": 999,
       "cost_class": "paid",
       "kind": "paid",
+      "modes": [],
       "requires": [],
       "command": []
     }
