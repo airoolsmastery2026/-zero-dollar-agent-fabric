@@ -1,0 +1,9 @@
+{
+  "schema": "dhp.accessory-db.snapshot.v1",
+  "items": [
+    {"id":"accessory.none","label":"Không phụ kiện","kind":"none"},
+    {"id":"accessory.slats.vertical","label":"Nan dọc trang trí","kind":"slats","orientation":"vertical"},
+    {"id":"accessory.slats.horizontal","label":"Nan ngang trang trí","kind":"slats","orientation":"horizontal"},
+    {"id":"accessory.glass.accent","label":"Kính trang trí","kind":"glass"}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "dhp.material-db.snapshot.v1",
+  "items": [
+    {"id":"material.steel.powder-coated","label":"Thép sơn tĩnh điện","metallic":0.58,"roughness":0.30},
+    {"id":"material.aluminum.standard","label":"Nhôm","metallic":0.72,"roughness":0.24},
+    {"id":"material.finish.wood-look","label":"Sơn giả gỗ","metallic":0.18,"roughness":0.42}
+  ],
+  "colors": [
+    {"id":"color.anthracite","label":"Anthracite","hex":"#34383d"},
+    {"id":"color.black","label":"Black","hex":"#111315"},
+    {"id":"color.warm-brown","label":"Warm Brown","hex":"#654b38"}
+  ]
+}

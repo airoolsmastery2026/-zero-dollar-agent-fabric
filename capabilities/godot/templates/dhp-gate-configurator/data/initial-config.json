@@ -1,0 +1,11 @@
+{
+  "schema":"dhp.configurator.gate.v1",
+  "product_id":"gate.standard.double-leaf",
+  "width_m":4.0,
+  "height_m":2.2,
+  "material_id":"material.steel.powder-coated",
+  "color_id":"color.anthracite",
+  "accessory_ids":["accessory.slats.vertical"],
+  "reference_image_ids":["image.gate.reference.modern-01"],
+  "pricing":{"source":"ESTIMATION_DB","embedded_price":false}
+}

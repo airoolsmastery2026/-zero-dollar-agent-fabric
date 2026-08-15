@@ -1,0 +1,18 @@
+{
+  "schema": "dhp.configurator.sources.v1",
+  "sources": {
+    "products": "res://data/products.json",
+    "materials": "res://data/materials.json",
+    "accessories": "res://data/accessories.json",
+    "images": "res://data/images.json",
+    "initial_configuration": "res://data/initial-config.json"
+  },
+  "external_adapters": {
+    "dhp_aios": {
+      "enabled": false,
+      "mode": "http-json",
+      "base_url": "",
+      "allowed_domains": []
+    }
+  }
+}
