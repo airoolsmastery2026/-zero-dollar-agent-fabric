@@ -1,27 +1,57 @@
-# DHP Gate Configurator Prototype
+# DHP Gate Configurator Prototype v0.3
 
-A zero-dollar-first Godot vertical slice for Đại Hải Phát interactive sales engineering.
+Zero-dollar-first Godot vertical slice for DHP interactive sales engineering. Godot is a visualization/runtime consumer, not the business source of truth.
 
-## Scope
+## Current capability
 
-This prototype is intentionally not a pricing engine and not part of a web framework core. It visualizes a gate configuration and emits a stable configuration contract that downstream DHP services can send to `ESTIMATION_DB`, Proposal, CRM, or quotation workflows.
-
-Current controls:
-- gate width: 2.0–6.0 m
-- gate height: 1.5–3.0 m
-- material preset IDs
-- color presets
-- accessory preset IDs
-- Web and Windows export presets
+- data-driven 1/2/4-leaf gates
+- width/height constraints from PRODUCT_DB snapshots
+- MATERIAL_DB color/material visualization metadata
+- ACCESSORY_DB and IMAGE_DB IDs
+- orbit/zoom camera
+- Web + Windows export presets
 - JSON configuration output
+- Web -> Godot configuration input
+- Godot -> Web `dhp-configurator-change` events
+- optional DHP-AIOS live JSON adapter with allowlist, timeout, schema validation and local cache
+- deterministic local snapshot fallback
 
-## Contract
+## Business contract
 
-The runtime emits schema `dhp.configurator.gate.v1` with IDs such as `product_id`, `material_id`, `color_id`, and `accessory_ids`. Price is never embedded in GDScript. `pricing.source` points to `ESTIMATION_DB` as the business source of truth.
+Runtime schema: `dhp.configurator.gate.v1`.
+
+Godot emits product/material/color/accessory/reference IDs plus dimensions. It never embeds authoritative prices. `ESTIMATION_DB` remains the pricing source of truth and Proposal/CRM consume the emitted configuration.
+
+## Input modes
+
+Default mode is offline/local snapshots under `res://data/`. `sources.json` may enable `external_adapters.dhp_aios` when a real DHP-AIOS endpoint exists.
+
+For live mode set only trusted values:
+
+```json
+{
+  "enabled": true,
+  "base_url": "https://your-dhp-aios.example",
+  "allowed_domains": ["your-dhp-aios.example"]
+}
+```
+
+The adapter accepts only the declared snapshot schemas, caches successful responses under `user://dhp-configurator-cache`, and falls back to cache/local data on failure. Do not put secrets in Godot source or Web exports.
+
+## Web bridge
+
+Host listens for configuration changes:
+
+```js
+window.addEventListener('dhp-configurator-change', (event) => {
+  const configuration = event.detail;
+  // send to DHP-AIOS / ESTIMATION_DB / Proposal
+});
+```
+
+Host can push a configuration into the Web export through the `dhp-configurator-host-config` bridge contract. The payload must use `dhp.configurator.gate.v1`.
 
 ## Run locally
-
-Open the folder in Godot 4.x and run `main.tscn`, or use the Zero-Dollar Agent Fabric adapter:
 
 ```python
 from capabilities.godot.adapter import GodotAdapter
@@ -33,23 +63,21 @@ adapter.test_project(project)
 
 ## Export
 
-With matching Godot export templates installed locally:
-
 ```python
 adapter.export_web(project, f"{project}/build/web/index.html", preset="Web")
 adapter.export_desktop(project, f"{project}/build/windows/DHP-Gate-Configurator.exe", preset="Windows Desktop")
 ```
 
-## DHP integration target
+## Integration target
 
 ```text
 AI Chat
-  -> PRODUCT_DB / MATERIAL_DB / IMAGE_DB
+  -> PRODUCT_DB / MATERIAL_DB / ACCESSORY_DB / IMAGE_DB
+  -> DHP-AIOS signed/validated snapshots (optional)
+  -> Godot realtime configurator
   -> dhp.configurator.gate.v1
-  -> Godot realtime visualization
-  -> configuration changed event
   -> ESTIMATION_DB
   -> Proposal / Survey / Quote / Contract
 ```
 
-The web application should lazy-load a Web export only when the user opens the configurator. Do not make Godot a mandatory dependency of the main DHP website bundle.
+The main Next.js website must lazy-load a Web export only when the configurator is opened. Godot remains an optional capability, never a mandatory website-core dependency.

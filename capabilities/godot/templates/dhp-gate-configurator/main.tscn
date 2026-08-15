@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource path="res://scripts/main.gd" type="Script" id="1"]
+[ext_resource path="res://scripts/camera_orbit.gd" type="Script" id="2"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1")
@@ -13,8 +14,8 @@ light_energy = 2.0
 shadow_enabled = true
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 2.3, 8.8)
 current = true
+script = ExtResource("2")
 
 [node name="GateRoot" type="Node3D" parent="."]
 
@@ -23,16 +24,22 @@ current = true
 [node name="Panel" type="PanelContainer" parent="UI"]
 offset_left = 20.0
 offset_top = 20.0
-offset_right = 390.0
-offset_bottom = 520.0
+offset_right = 410.0
+offset_bottom = 590.0
 
 [node name="VBox" type="VBoxContainer" parent="UI/Panel"]
 
 [node name="Title" type="Label" parent="UI/Panel/VBox"]
-text = "DHP Gate Configurator v0.2"
+text = "DHP Gate Configurator v0.3"
 
 [node name="SourceStatus" type="Label" parent="UI/Panel/VBox"]
 text = "Input sources: loading..."
+
+[node name="ReferenceStatus" type="Label" parent="UI/Panel/VBox"]
+text = "Reference: none"
+
+[node name="LiveRefresh" type="Button" parent="UI/Panel/VBox"]
+text = "Refresh DHP-AIOS Sources"
 
 [node name="ProductLabel" type="Label" parent="UI/Panel/VBox"]
 text = "Product"
