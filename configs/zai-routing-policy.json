@@ -1,0 +1,24 @@
+{
+  "version": "0.1.0",
+  "provider": "zai",
+  "automatic_zero_models": [
+    "glm-4.7-flash",
+    "glm-4.5-flash"
+  ],
+  "opportunistic_models": [
+    "glm-5.2"
+  ],
+  "subscription_models": [
+    "glm-5.2"
+  ],
+  "hard_blocked_paid_models": [
+    "glm-5.2"
+  ],
+  "rules": [
+    "Automatic routing may only select models listed in automatic_zero_models.",
+    "GLM-5.2 trial is opportunistic only and must never become a durable dependency.",
+    "Coding Plan usage requires an explicit opt-in subscription mode.",
+    "Paid GLM-5.2 API usage is forbidden in absolute-zero mode.",
+    "Never silently fall back from a free Z.ai model to a paid Z.ai model."
+  ]
+}
