@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "absolute_zero": true,
   "rules": [
     "Never invoke a profile whose cost_class is not zero.",
@@ -8,7 +8,12 @@
     "Cloud quota exhaustion must fall through to another zero-cost profile.",
     "A local Ollama path must remain available as the final continuity layer.",
     "Do not commit provider secrets.",
-    "Persist routing state so failed providers can cool down."
+    "Persist routing state so failed providers can cool down.",
+    "Z.ai automatic routing is restricted to glm-4.7-flash and glm-4.5-flash through the hard-allowlisted adapter.",
+    "GLM-5.2 trial is opportunistic only and must not enter the automatic provider pool.",
+    "GLM-5.2 Coding Plan is optional subscription capacity and must remain disabled unless explicitly enabled outside absolute-zero mode.",
+    "Paid GLM-5.2 API usage is hard-blocked in absolute-zero mode.",
+    "Never silently fall back from a free Z.ai route to any paid Z.ai model or endpoint."
   ],
   "strip_environment_variables": [
     "OPENAI_API_KEY",
