@@ -1,0 +1,7 @@
+{
+  "schema": "dhp.image-db.snapshot.v1",
+  "items": [
+    {"id":"image.gate.reference.modern-01","label":"Modern gate reference","uri":"res://assets/references/modern-01.jpg","tags":["gate","modern","vertical-slats"]},
+    {"id":"image.material.powder-black","label":"Powder black reference","uri":"res://assets/references/powder-black.jpg","tags":["material","black"]}
+  ]
+}
