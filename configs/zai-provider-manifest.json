@@ -1,0 +1,34 @@
+{
+  "provider": "zai",
+  "kind": "official-free-cloud",
+  "base_url": "https://api.z.ai/api/paas/v4",
+  "automatic_pool": [
+    {
+      "model": "glm-4.7-flash",
+      "cost_class": "zero",
+      "priority": 25,
+      "modes": ["read", "reasoning", "review"]
+    },
+    {
+      "model": "glm-4.5-flash",
+      "cost_class": "zero",
+      "priority": 26,
+      "modes": ["read", "reasoning", "review"]
+    }
+  ],
+  "opportunistic": [
+    {
+      "model": "glm-5.2",
+      "mode": "trial",
+      "enabled": false
+    }
+  ],
+  "subscription": [
+    {
+      "model": "glm-5.2",
+      "mode": "coding-plan",
+      "enabled": false
+    }
+  ],
+  "paid_api_hard_block": ["glm-5.2"]
+}
