@@ -12,7 +12,20 @@
       "enabled": false,
       "mode": "http-json",
       "base_url": "",
-      "allowed_domains": []
+      "allowed_domains": [],
+      "timeout_sec": 8,
+      "endpoints": {
+        "products": "/api/configurator/products",
+        "materials": "/api/configurator/materials",
+        "accessories": "/api/configurator/accessories",
+        "images": "/api/configurator/images"
+      },
+      "schemas": {
+        "products": "dhp.product-db.snapshot.v1",
+        "materials": "dhp.material-db.snapshot.v1",
+        "accessories": "dhp.accessory-db.snapshot.v1",
+        "images": "dhp.image-db.snapshot.v1"
+      }
     }
   }
 }
