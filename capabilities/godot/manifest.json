@@ -1,0 +1,36 @@
+{
+  "id": "godot.local",
+  "name": "Godot Local Interactive Engine",
+  "cost_class": "zero",
+  "execution": "local",
+  "requires": ["godot>=4"],
+  "network_required": false,
+  "paid_fallback": false,
+  "capabilities": [
+    "2d",
+    "3d",
+    "simulation",
+    "product-configurator",
+    "digital-twin",
+    "walkthrough",
+    "interactive-showroom",
+    "web-export",
+    "desktop-export"
+  ],
+  "activation_terms": [
+    "3d configurator",
+    "interactive visualization",
+    "simulation",
+    "digital twin",
+    "walkthrough",
+    "product configurator",
+    "construction simulation",
+    "interactive showroom"
+  ],
+  "guardrails": {
+    "absolute_zero_compatible": true,
+    "authoritative_pricing": false,
+    "authoritative_engineering": false,
+    "secrets_required": false
+  }
+}
