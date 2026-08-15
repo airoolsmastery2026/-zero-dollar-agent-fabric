@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "absolute_zero": true,
   "allow_zero_incremental": false,
   "default_mode": "auto",
@@ -46,6 +46,49 @@
       "command": ["ollama", "run", "minimax-m3:cloud", "{prompt}"]
     },
     {
+      "id": "zai-glm47-flash-free",
+      "enabled": true,
+      "priority": 25,
+      "cost_class": "zero",
+      "kind": "official-free-cloud",
+      "modes": ["read", "reasoning", "review"],
+      "requires": ["python3"],
+      "timeout_seconds": 300,
+      "command": ["python3", "scripts/zai_free_chat.py", "glm-4.7-flash", "{prompt}"]
+    },
+    {
+      "id": "zai-glm45-flash-free",
+      "enabled": true,
+      "priority": 26,
+      "cost_class": "zero",
+      "kind": "official-free-cloud",
+      "modes": ["read", "reasoning", "review"],
+      "requires": ["python3"],
+      "timeout_seconds": 300,
+      "command": ["python3", "scripts/zai_free_chat.py", "glm-4.5-flash", "{prompt}"]
+    },
+    {
+      "id": "zai-glm52-trial",
+      "enabled": false,
+      "priority": 27,
+      "cost_class": "zero-incremental",
+      "kind": "temporary-trial",
+      "modes": ["read", "reasoning", "review"],
+      "requires": [],
+      "timeout_seconds": 300,
+      "command": []
+    },
+    {
+      "id": "zai-glm52-coding-plan",
+      "enabled": false,
+      "priority": 28,
+      "cost_class": "subscription",
+      "kind": "optional-subscription",
+      "modes": [],
+      "requires": [],
+      "command": []
+    },
+    {
       "id": "codex-local",
       "enabled": true,
       "priority": 30,
@@ -72,6 +115,16 @@
         "ANTHROPIC_BASE_URL": "http://localhost:11434"
       },
       "command": ["claude", "--model", "{model}", "-p", "{prompt}"]
+    },
+    {
+      "id": "zai-glm52-paid-api",
+      "enabled": false,
+      "priority": 998,
+      "cost_class": "paid",
+      "kind": "paid",
+      "modes": [],
+      "requires": [],
+      "command": []
     },
     {
       "id": "paid-provider-placeholder",
