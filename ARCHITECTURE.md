@@ -22,6 +22,39 @@ failure / quota / 429                      │
       └─ mark cooldown → next profile ─────┘
 ```
 
+## Free Resource Registry
+
+Infrastructure discovery is separated from deployment eligibility:
+
+```text
+free-for-dev / other community catalogs
+              │
+              ▼
+      candidate discovery
+              │
+              ▼
+ normalized resource registry
+              │
+              ▼
+ official provider documentation
+              │
+      semantic verification
+              │
+              ▼
+ freshness + $0 policy gate
+              │
+      ┌───────┴────────┐
+      │                │
+ eligible           blocked
+      │
+      ▼
+ ranking / selection / deploy planning
+```
+
+`free-for-dev` is discovery-only. A candidate never becomes deploy-eligible merely because its URL is reachable. Eligibility requires `cost_class=zero`, an official provider source, `verification.status=verified`, a non-stale `verified_at`, and no disallowed billing dependency. The registry CLI is `scripts/free_resource_registry.py`; normalized verified records live in `configs/free-resource-registry.json`; discovery snapshots are runtime state under `.zero/` and are not authoritative configuration.
+
+The registry does not auto-enable cloud resources in the execution router. It provides vetted candidates to higher-level planning while the existing orchestrator retains the final hard-lock and provider failover policy.
+
 ## Failure classes
 
 - `quota`: 429, quota exceeded, rate limit, resource exhausted, usage limit
@@ -37,6 +70,8 @@ Local profiles normally use a short cooldown; cloud free profiles use a longer c
 ## Health probes
 
 Configured Ollama routes query the local `/api/tags` endpoint before execution. A route is usable only when the daemon responds and its required model is advertised. These probes do not generate tokens or bypass the cost-policy gate.
+
+Free Resource Registry `audit --probe` checks only whether an official source is reachable. Reachability can never auto-promote a candidate to `verified` because free-tier semantics must be confirmed from official provider documentation.
 
 ## Task classification
 
@@ -68,6 +103,8 @@ With `absolute_zero=true`:
 - profiles with `cost_class != "zero"` are never launched
 - common paid API environment variables are removed from child processes
 - API-key based paid fallbacks are not configured
+- promotional-credit-only infrastructure is not a durable dependency
+- stale or unofficial resource records are not deploy-eligible
 - if no zero-cost provider is available, the tool exits instead of spending money
 
 ## Recommended long-term topology
@@ -94,11 +131,14 @@ With `absolute_zero=true`:
 No paid path exists in absolute-zero mode.
 ```
 
-## Future v0.2
+Beside the execution path, `free_resource_registry.py` continuously supports discovery and verification of zero-cost infrastructure without weakening the hard-lock.
+
+## Future v0.3+
 
 - model-level health probing
 - local multi-model rotation based on RAM/VRAM profile
 - repo task queue
 - automatic checkpoint/commit before agent handoff
 - optional local dashboard
-- official-free-provider plugins
+- additional official-free-provider verifier adapters
+- scheduled registry re-verification without automatic paid fallback
