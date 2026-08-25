@@ -1,0 +1,116 @@
+{
+  "version": "1.0.0",
+  "policy": {
+    "absolute_zero": true,
+    "verification_max_age_days": 30,
+    "candidate_catalogs_are_non_authoritative": true,
+    "require_official_source": true,
+    "require_verified_status": true,
+    "disallow_promotional_credit_dependency": true
+  },
+  "source_catalogs": {
+    "free_for_dev": {
+      "repo": "https://github.com/ripienaar/free-for-dev",
+      "raw_url": "https://raw.githubusercontent.com/ripienaar/free-for-dev/master/README.md",
+      "trust": "candidate_only"
+    }
+  },
+  "resources": [
+    {
+      "id": "google-cloud-compute-e2-micro-free-tier",
+      "category": "compute/vps",
+      "provider": "Google Cloud",
+      "resource": "Compute Engine e2-micro Free Tier",
+      "cost_class": "zero",
+      "billing_dependency": "free_tier",
+      "free_limit": "One eligible e2-micro VM within Google Cloud Free Tier limits; exact region, storage and egress limits are governed by the official Free Program documentation.",
+      "card_required": true,
+      "expiration": "no fixed trial expiration while eligible and within published Free Tier limits",
+      "region": ["us-west1", "us-central1", "us-east1"],
+      "architecture": ["x86"],
+      "ram": "e2-micro class",
+      "cpu": "shared-core e2-micro class",
+      "storage": "subject to Google Cloud Free Tier limits",
+      "bandwidth": "subject to Google Cloud Free Tier limits",
+      "sleep_policy": "none documented as a Free Tier sleep requirement",
+      "reclaim_policy": "standard Compute Engine lifecycle; Free Tier eligibility/limits still apply",
+      "requires_paid_upgrade": false,
+      "verification": {
+        "status": "verified",
+        "verified_at": "2026-08-25",
+        "official_source": "https://cloud.google.com/free/docs/free-cloud-features",
+        "evidence_note": "Verified against Google Cloud official Free Program documentation. Re-audit before deployment when verification becomes stale."
+      },
+      "rank": {
+        "durability": 4,
+        "capacity": 1,
+        "availability": 4,
+        "reclaim_risk": 1
+      }
+    },
+    {
+      "id": "oracle-cloud-always-free-compute",
+      "category": "compute/vps",
+      "provider": "Oracle Cloud Infrastructure",
+      "resource": "Always Free Compute",
+      "cost_class": "zero",
+      "billing_dependency": "free_tier",
+      "free_limit": "Always Free eligible Compute resources within Oracle's published allocation; exact OCPU, RAM, storage and shape availability are governed by the official documentation.",
+      "card_required": true,
+      "expiration": "no fixed trial expiration for Always Free resources while eligible and within limits",
+      "region": ["home-region-dependent"],
+      "architecture": ["ARM", "x86"],
+      "ram": "shape/allocation dependent",
+      "cpu": "Always Free eligible AMD/Arm shapes subject to current Oracle policy",
+      "storage": "subject to Oracle Always Free allocation",
+      "bandwidth": "subject to Oracle Always Free allocation",
+      "sleep_policy": "no sleep requirement; idle resource reclamation policy applies",
+      "reclaim_policy": "Oracle may reclaim idle Always Free compute instances under its documented idle-resource criteria",
+      "requires_paid_upgrade": false,
+      "verification": {
+        "status": "verified",
+        "verified_at": "2026-08-25",
+        "official_source": "https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm",
+        "evidence_note": "Verified against Oracle Cloud official Always Free documentation. Capacity can be unavailable and idle reclamation rules apply."
+      },
+      "rank": {
+        "durability": 4,
+        "capacity": 4,
+        "availability": 2,
+        "reclaim_risk": 3
+      }
+    },
+    {
+      "id": "local-ollama-continuity",
+      "category": "local/ai-runtime",
+      "provider": "Local Machine",
+      "resource": "Ollama local fallback",
+      "cost_class": "zero",
+      "billing_dependency": "none",
+      "free_limit": "Local hardware capacity only",
+      "card_required": false,
+      "expiration": "none",
+      "region": ["local"],
+      "architecture": ["x86", "ARM"],
+      "ram": "local hardware dependent",
+      "cpu": "local hardware dependent",
+      "storage": "local hardware dependent",
+      "bandwidth": "local network only unless explicitly exposed",
+      "sleep_policy": "host dependent",
+      "reclaim_policy": "none",
+      "requires_paid_upgrade": false,
+      "verification": {
+        "status": "verified",
+        "verified_at": "2026-08-25",
+        "official_source": "https://ollama.com/",
+        "evidence_note": "Local continuity layer; remains the final zero-cost fallback in the fabric."
+      },
+      "rank": {
+        "durability": 5,
+        "capacity": 2,
+        "availability": 5,
+        "reclaim_risk": 0
+      }
+    }
+  ]
+}
