@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "absolute_zero": true,
   "rules": [
     "Never invoke a profile whose cost_class is not zero.",
@@ -9,6 +9,9 @@
     "A local Ollama path must remain available as the final continuity layer.",
     "Do not commit provider secrets.",
     "Persist routing state so failed providers can cool down.",
+    "Community catalogs such as free-for-dev are discovery-only and must never be treated as authoritative verification.",
+    "A discovered infrastructure resource is deploy-eligible only when cost_class is zero, an official provider source is recorded, verification status is verified, and verification freshness is within policy.",
+    "Automatic source reachability probes may never promote candidate_only to verified; semantic free-tier verification must be grounded in the official provider documentation.",
     "Z.ai automatic routing is restricted to glm-4.7-flash and glm-4.5-flash through the hard-allowlisted adapter.",
     "GLM-5.2 trial is opportunistic only and must not enter the automatic provider pool.",
     "GLM-5.2 Coding Plan is optional subscription capacity and must remain disabled unless explicitly enabled outside absolute-zero mode.",
