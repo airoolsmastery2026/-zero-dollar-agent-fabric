@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from dataclasses import dataclass
+from typing import NamedTuple
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -26,8 +26,8 @@ POLICY_PATH = os.path.join(ROOT, "configs", "zero-dollar-policy.json")
 VERIFIED_CONTRACT = "autogpt-external-api-v1-tools-run-agent@2026-10-07"
 
 
-@dataclass(frozen=True)
-class AutoGPTConfig:
+class AutoGPTConfig(NamedTuple):
+    """Immutable configuration that is safe under direct module execution."""
     base_url: str = "http://127.0.0.1:8006"
     enabled: bool = False
     allow_network: bool = False
@@ -84,6 +84,11 @@ def validate(config: AutoGPTConfig, policy: dict) -> None:
         raise AutoGPTPolicyError(
             "No AUTOGPT_ALLOWED_AGENT_SLUG configured; refusing unrestricted agent execution."
         )
+
+
+def validate_submission(config: AutoGPTConfig, policy: dict) -> None:
+    """Validate configuration at the execution-submission boundary."""
+    validate(config, policy)
 
 
 def _headers(config: AutoGPTConfig) -> dict[str, str]:
