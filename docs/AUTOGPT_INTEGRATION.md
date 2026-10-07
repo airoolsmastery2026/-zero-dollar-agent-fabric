@@ -86,6 +86,9 @@ A link, documented integration, or clean-room adapter against a supported public
 - Document resource requirements, data stores, network ports, and operational cost.
 
 ### Phase 2 — adapter behind a feature flag
+- Initial fail-closed adapter is now present at `scripts/autogpt_adapter.py` with `AUTOGPT_ENABLED=false` by default.
+- Health probing is allowed only after explicit network opt-in and verified API-contract flag.
+- Task submission remains deliberately disabled until a release-specific execution contract is verified.
 - Add a disabled-by-default autogpt runtime profile.
 - Validate all provider/model costs before dispatch.
 - Add mocked contract tests for success, quota/rate-limit, timeout, cancellation, malformed response, and secret redaction.
