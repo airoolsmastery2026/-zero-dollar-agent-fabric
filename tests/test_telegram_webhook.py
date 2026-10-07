@@ -17,6 +17,13 @@ class TelegramWebhookTests(unittest.TestCase):
     def test_ignores_non_message_update(self):
         self.assertIsNone(tg.extract_text_update({"callback_query": {}}))
 
+    def test_update_claim_rejects_duplicate(self):
+        import tempfile
+        tg.STATE_DIR = Path(tempfile.mkdtemp())
+        tg.UPDATE_STATE_PATH = tg.STATE_DIR / "telegram-updates.json"
+        self.assertTrue(tg._claim_update(123))
+        self.assertFalse(tg._claim_update(123))
+
     def test_webhook_handler_is_created(self):
         handler = tg.make_handler(
             tg.BotConfig(
