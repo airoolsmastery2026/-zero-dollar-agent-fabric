@@ -183,3 +183,22 @@ The bot cannot bypass `zero_agent.py`. Every task must enter the existing policy
 - **L3 Disabled by default:** destructive operations, credential changes, billing/provider changes.
 
 This makes the bot suitable as the always-on operator interface without turning Telegram messages into arbitrary remote code execution.
+
+
+## Telegram transport implementation
+
+The first Telegram transport is now implemented in `scripts/telegram_webhook.py` using only the Python standard library. It is disabled unless `ZERO_BOT_ENABLED=true` and requires `TELEGRAM_BOT_TOKEN` at runtime.
+
+The transport accepts only Telegram JSON webhook updates, verifies `X-Telegram-Bot-Api-Secret-Token` when configured, extracts message identity, and delegates all authorization and command policy to `bot_operator.py`. It sends replies through Telegram's Bot API; it does not execute shell commands itself.
+
+Required environment variables:
+
+- `ZERO_BOT_ENABLED=true`
+- `ZERO_BOT_ALLOWED_CHAT_IDS=<comma-separated IDs>`
+- `ZERO_BOT_ALLOWED_USER_IDS=<comma-separated IDs>`
+- `ZERO_BOT_WEBHOOK_SECRET=<secret>`
+- `TELEGRAM_BOT_TOKEN=<secret>`
+
+Telegram's official Bot API requires an HTTPS URL for `setWebhook` and supports `secret_token`, delivered as `X-Telegram-Bot-Api-Secret-Token`. Webhooks also have supported ports 443, 80, 88 and 8443. citeturn0search2turn0search1
+
+The repository intentionally does not contain a bot token, webhook URL, chat ID, or user ID.
