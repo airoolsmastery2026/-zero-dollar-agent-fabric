@@ -251,6 +251,15 @@ def handle_message(text: str, *, config: BotConfig, chat_id: str, user_id: str) 
         user_id=str(user_id),
         action=plan["action"],
     )
+    if plan["command"] in {"/approve", "/deny"}:
+        decision = "approve" if plan["command"] == "/approve" else "deny"
+        item = resolve_approval(
+            plan["argument"],
+            decision,
+            chat_id=chat_id,
+            user_id=user_id,
+        )
+        return {"status": "approval_resolved", "decision": decision, "approval": item}
     if plan["action"] == "approval_required":
         item = queue_approval(plan, chat_id=chat_id, user_id=user_id)
         return {"status": "approval_required", "approval_id": item["approval_id"], "plan": plan}
