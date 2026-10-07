@@ -144,3 +144,42 @@ AUTOGPT_API_KEY=<local-api-key-if-required>
 The `zero` cost label is a policy input, not proof that an arbitrary AutoGPT
 graph is free. For production use, the selected local agent must be independently
 audited so it cannot invoke paid model providers or paid external services.
+
+
+## Bot-operated control plane
+
+A bot should operate the Fabric as a **control plane**, not as an unrestricted shell.
+
+Recommended flow:
+
+`Telegram webhook → identity/allowlist → command parser → ZERO-$ policy → task router → selected runtime → audit event → Telegram result`
+
+### Operations
+
+The first bot surface should be read-only/status oriented:
+
+- `/status` — provider/runtime health and current cooldowns.
+- `/doctor` — dependency and policy diagnostics.
+- `/run <task>` — submit a task through the normal ZERO-$ router.
+- `/autogpt <task>` — explicitly route to the allowlisted AutoGPT agent.
+- `/result <id>` — retrieve a known execution result.
+- `/stop <id>` — stop/cancel only when the runtime contract supports it.
+- `/approve <id>` — approve a queued side effect.
+- `/deny <id>` — reject it.
+
+### Safety boundary
+
+The bot must never execute arbitrary shell commands from chat. Commands are mapped to typed operations, and write/destructive operations enter an approval queue. Telegram webhook requests should use Telegram's `secret_token` header; operator authorization should additionally be based on an explicit chat/user allowlist. Telegram documents both webhook delivery and the `X-Telegram-Bot-Api-Secret-Token` mechanism. citeturn1search2
+
+### Zero-cost enforcement
+
+The bot cannot bypass `zero_agent.py`. Every task must enter the existing policy/router path. AutoGPT remains one optional runtime. A failed or unavailable AutoGPT execution must not activate a paid provider.
+
+### Autonomy levels
+
+- **L0 Observe:** status, logs, diagnostics.
+- **L1 Execute-safe:** research, analysis, generation into isolated workspace.
+- **L2 Approval-required:** commits, deployment, outbound messages, external writes.
+- **L3 Disabled by default:** destructive operations, credential changes, billing/provider changes.
+
+This makes the bot suitable as the always-on operator interface without turning Telegram messages into arbitrary remote code execution.
