@@ -197,6 +197,21 @@ def resolve_approval(approval_id: str, decision: str, *, chat_id: str, user_id: 
     return item
 
 
+def dispatch_autogpt_plan(plan: dict, *, submitter=None) -> dict:
+    """Dispatch a safe /autogpt task through the guarded AutoGPT adapter."""
+    if plan.get("action") != "safe_execute" or plan.get("command") != "/autogpt":
+        raise BotPolicyError("only safe /autogpt plans may be dispatched")
+    task = plan.get("task", "").strip()
+    if not task:
+        raise BotPolicyError("AutoGPT plan has no task")
+    if submitter is None:
+        from autogpt_adapter import submit
+        submitter = submit
+    result = submitter(task)
+    _audit("autogpt_task_dispatched", task_hash=hashlib.sha256(task.encode("utf-8")).hexdigest())
+    return {"status": "submitted", "result": result}
+
+
 def dispatch_safe_plan(plan: dict, *, runner=None) -> dict:
     """Dispatch only an already-classified safe /run task through zero_agent.py.
 
@@ -239,6 +254,17 @@ def dispatch_safe_plan(plan: dict, *, runner=None) -> dict:
     }
     _audit("safe_task_dispatched", command=plan["command"], exit_code=proc.returncode)
     return result
+
+
+def dispatch_plan(plan: dict, *, runner=None, autogpt_submitter=None) -> dict:
+    """Dispatch an already-authorized safe plan through its provider boundary."""
+    if plan.get("action") != "safe_execute":
+        raise BotPolicyError("only safe_execute plans may be dispatched")
+    if plan.get("command") == "/run":
+        return dispatch_safe_plan(plan, runner=runner)
+    if plan.get("command") == "/autogpt":
+        return dispatch_autogpt_plan(plan, submitter=autogpt_submitter)
+    raise BotPolicyError("command is not executable by the dispatcher")
 
 
 def handle_message(text: str, *, config: BotConfig, chat_id: str, user_id: str) -> dict:
