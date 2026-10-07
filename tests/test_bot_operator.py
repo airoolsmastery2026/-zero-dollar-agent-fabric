@@ -95,6 +95,18 @@ class BotOperatorTests(unittest.TestCase):
         with self.assertRaisesRegex(bot.BotPolicyError, "only /run"):
             bot.dispatch_safe_plan(plan)
 
+    def test_approve_and_deny_resolve_queue(self):
+        plan = bot.plan_message("/run update README")
+        item = bot.queue_approval(plan, chat_id="chat-1", user_id="user-1")
+        result = bot.handle_message(
+            "/approve " + item["approval_id"],
+            config=self.config(),
+            chat_id="chat-1",
+            user_id="user-1",
+        )
+        self.assertEqual(result["status"], "approval_resolved")
+        self.assertEqual(result["decision"], "approve")
+
     def test_handle_message_never_executes(self):
         result = bot.handle_message(
             "/run create a report",
