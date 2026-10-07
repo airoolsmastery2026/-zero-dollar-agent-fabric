@@ -108,3 +108,39 @@ A link, documented integration, or clean-room adapter against a supported public
 - Adapter is optional and disabled by default.
 - Unit tests cover policy denial and failure handling before any live runtime test.
 - Documentation states which parts are verified versus planned.
+
+
+## Verified external API binding (2026-10-07)
+
+The adapter now binds to the upstream AutoGPT external API contract without
+copying AutoGPT Platform source:
+
+- `POST /external-api/v1/tools/run-agent` — run an explicitly allowlisted marketplace agent.
+- `GET /external-api/v1/graphs/{graph_id}/executions/{execution_id}/results` — read execution results.
+- Authentication uses the optional `X-API-Key` header when `AUTOGPT_API_KEY` is configured.
+- In `absolute_zero=true`, the adapter accepts only loopback AutoGPT endpoints.
+- `AUTOGPT_ALLOWED_AGENT_SLUG` is mandatory for submission; unrestricted agent selection is rejected.
+- The adapter never falls back to another provider when AutoGPT rejects or cannot execute.
+- `AUTOGPT_ENABLED=false` remains the default.
+
+The upstream route implementation was inspected on 2026-10-07. AutoGPT Platform
+itself is separately licensed under Polyform Shield, so this repository keeps
+the integration at an HTTP boundary and does not vendor or copy Platform code.
+
+### Explicit opt-in
+
+A local test deployment can be enabled with environment variables such as:
+
+```text
+AUTOGPT_ENABLED=true
+AUTOGPT_ALLOW_NETWORK=true
+AUTOGPT_API_CONTRACT_VERIFIED=true
+AUTOGPT_COST_CLASS=zero
+AUTOGPT_BASE_URL=http://127.0.0.1:8006
+AUTOGPT_ALLOWED_AGENT_SLUG=<explicit-local-agent>
+AUTOGPT_API_KEY=<local-api-key-if-required>
+```
+
+The `zero` cost label is a policy input, not proof that an arbitrary AutoGPT
+graph is free. For production use, the selected local agent must be independently
+audited so it cannot invoke paid model providers or paid external services.
