@@ -70,6 +70,31 @@ class BotOperatorTests(unittest.TestCase):
         resolved = bot.resolve_approval(item["approval_id"], "approve", chat_id="chat-1", user_id="user-1")
         self.assertEqual(resolved["status"], "approved")
 
+    def test_safe_dispatch_uses_zero_agent_argv(self):
+        plan = bot.plan_message("/run research the repository architecture")
+        seen = {}
+
+        class Result:
+            returncode = 0
+            stdout = "done\n"
+
+        def runner(argv):
+            seen["argv"] = argv
+            return Result()
+
+        result = bot.dispatch_safe_plan(plan, runner=runner)
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(seen["argv"][1:], [
+            str(bot.ROOT / "scripts" / "zero_agent.py"),
+            "run",
+            "research the repository architecture",
+        ])
+
+    def test_safe_dispatch_rejects_non_run_commands(self):
+        plan = bot.plan_message("/autogpt research")
+        with self.assertRaisesRegex(bot.BotPolicyError, "only /run"):
+            bot.dispatch_safe_plan(plan)
+
     def test_handle_message_never_executes(self):
         result = bot.handle_message(
             "/run create a report",
