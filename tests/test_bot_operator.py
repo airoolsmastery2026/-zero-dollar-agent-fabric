@@ -70,6 +70,20 @@ class BotOperatorTests(unittest.TestCase):
         resolved = bot.resolve_approval(item["approval_id"], "approve", chat_id="chat-1", user_id="user-1")
         self.assertEqual(resolved["status"], "approved")
 
+    def test_autogpt_dispatch_uses_injected_submitter(self):
+        plan = {"command": "/autogpt", "action": "safe_execute", "task": "research status"}
+        seen = {}
+        def submitter(task):
+            seen["task"] = task
+            return {"execution_id": "ex1"}
+        result = bot.dispatch_plan(plan, autogpt_submitter=submitter)
+        self.assertEqual(result["status"], "submitted")
+        self.assertEqual(seen["task"], "research status")
+
+    def test_dispatch_rejects_unknown_safe_command(self):
+        with self.assertRaises(bot.BotPolicyError):
+            bot.dispatch_plan({"command": "/status", "action": "safe_execute"})
+
     def test_safe_dispatch_uses_zero_agent_argv(self):
         plan = bot.plan_message("/run research the repository architecture")
         seen = {}
