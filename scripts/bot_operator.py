@@ -197,6 +197,50 @@ def resolve_approval(approval_id: str, decision: str, *, chat_id: str, user_id: 
     return item
 
 
+def dispatch_safe_plan(plan: dict, *, runner=None) -> dict:
+    """Dispatch only an already-classified safe /run task through zero_agent.py.
+
+    The default runner uses an argv list with shell execution disabled. Callers
+    may inject a test runner. No chat text is interpreted as a shell command.
+    """
+    if plan.get("action") != "safe_execute":
+        raise BotPolicyError("only safe_execute plans may be dispatched")
+    if plan.get("command") != "/run":
+        raise BotPolicyError("only /run is currently wired to the ZERO-$ router")
+    task = plan.get("task", "").strip()
+    if not task:
+        raise BotPolicyError("safe plan has no task")
+
+    if runner is None:
+        import subprocess
+        runner = lambda argv: subprocess.run(
+            argv,
+            cwd=ROOT,
+            shell=False,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=600,
+        )
+
+    proc = runner([
+        os.getenv("PYTHON", "python"),
+        str(ROOT / "scripts" / "zero_agent.py"),
+        "run",
+        task,
+    ])
+    result = {
+        "status": "completed" if proc.returncode == 0 else "failed",
+        "exit_code": proc.returncode,
+        "output": proc.stdout or "",
+    }
+    _audit("safe_task_dispatched", command=plan["command"], exit_code=proc.returncode)
+    return result
+
+
 def handle_message(text: str, *, config: BotConfig, chat_id: str, user_id: str) -> dict:
     verify_operator(config, chat_id=chat_id, user_id=user_id)
     plan = plan_message(text)
