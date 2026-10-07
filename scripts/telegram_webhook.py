@@ -10,14 +10,17 @@ from __future__ import annotations
 import json
 import os
 import secrets
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from bot_operator import BotConfig, BotPolicyError, handle_message
+from bot_operator import BotConfig, BotPolicyError, dispatch_plan, handle_message
 
 MAX_BODY = 256 * 1024
 TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
+STATE_DIR = Path.cwd() / ".zero"
+UPDATE_STATE_PATH = STATE_DIR / "telegram-updates.json"
 
 
 def _token() -> str:
@@ -59,10 +62,33 @@ def extract_text_update(update: dict) -> tuple[str, str, str] | None:
     return str(chat["id"]), str(user["id"]), text
 
 
+def _claim_update(update_id: int) -> bool:
+    """Atomically record Telegram update_id and reject webhook retries."""
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        state = json.loads(UPDATE_STATE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        state = {"processed": []}
+    processed = {int(value) for value in state.get("processed", [])}
+    if update_id in processed:
+        return False
+    processed.add(update_id)
+    state["processed"] = sorted(processed)[-2048:]
+    temp = UPDATE_STATE_PATH.with_suffix(".tmp")
+    temp.write_text(json.dumps(state), encoding="utf-8")
+    temp.replace(UPDATE_STATE_PATH)
+    return True
+
+
 def process_update(update: dict, *, config: BotConfig) -> dict | None:
     extracted = extract_text_update(update)
     if extracted is None:
         return None
+    update_id = update.get("update_id")
+    if not isinstance(update_id, int):
+        raise BotPolicyError("missing Telegram update_id")
+    if not _claim_update(update_id):
+        return {"status": "duplicate", "update_id": update_id}
     chat_id, user_id, text = extracted
     try:
         result = handle_message(
@@ -72,7 +98,9 @@ def process_update(update: dict, *, config: BotConfig) -> dict | None:
             user_id=user_id,
         )
         if result["status"] == "planned":
-            reply = json.dumps(result["plan"], ensure_ascii=False)
+            execution = dispatch_plan(result["plan"])
+            reply = json.dumps(execution, ensure_ascii=False)
+            result = {"status": "executed", "plan": result["plan"], "execution": execution}
         elif result["status"] == "approval_required":
             reply = f"Approval required: {result['approval_id']}"
         else:
@@ -80,7 +108,8 @@ def process_update(update: dict, *, config: BotConfig) -> dict | None:
     except BotPolicyError as exc:
         reply = f"Denied: {exc}"
         result = {"status": "denied", "error": str(exc)}
-    telegram_api("sendMessage", {"chat_id": chat_id, "text": reply[:4096]})
+    if result.get("status") != "duplicate":
+        telegram_api("sendMessage", {"chat_id": chat_id, "text": reply[:4096]})
     return result
 
 
