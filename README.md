@@ -122,6 +122,7 @@ tests/test_zero_agent.py     Policy and router tests
 .github/workflows/ci.yml     Free GitHub Actions validation
 AGENTS.md                    Instructions for coding agents
 ARCHITECTURE.md              System design
+docs/AUTOGPT_INTEGRATION.md  AutoGPT adapter boundary, license gate, and rollout plan
 ```
 
 ## Development checks
